@@ -36,6 +36,7 @@
     <libs>
         <lib>z</lib>
         <lib>libs/libarc-freetype.a</lib>
+        <lib>libs/libmindustry_pathfinding.a</lib>
     </libs>
     <frameworks>
         <framework>arc</framework>
