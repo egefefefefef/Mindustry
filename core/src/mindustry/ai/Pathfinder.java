@@ -496,6 +496,11 @@ public class Pathfinder implements Runnable{
 
     /** Update the frontier for a path. Pathfinding thread only. */
     private void updateFrontier(Flowfield path, long nsToRun){
+        // Native builds process the complete field in one call. If a platform does
+        // not provide the native bridge, the incremental Java implementation below
+        // remains the authoritative fallback.
+        if(NativeFlowfield.compute(path, tiles)) return;
+
         boolean hadAny = path.frontier.size > 0;
         long start = Time.nanos();
 

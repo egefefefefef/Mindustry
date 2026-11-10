@@ -1,0 +1,16 @@
+[package]
+name = "mindustry-pathfinding"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[lib]
+name = "mindustry_pathfinding"
+crate-type = ["cdylib", "staticlib"]
+
+[features]
+default = ["jni"]
+jni = ["dep:jni"]
+
+[dependencies]
+jni = { version = "0.21", optional = true }

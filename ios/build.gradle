@@ -76,5 +76,6 @@ robovm{
 
     iosSignIdentity = project.properties["signIdentity"]
     iosProvisioningProfile = project.properties["provisioningProfile"]
-    iosSkipSigning = false
+    // CI can produce an unsigned IPA when Apple signing credentials are unavailable.
+    iosSkipSigning = project.findProperty("iosSkipSigning")?.toString()?.toBoolean() ?: false
 }
