@@ -55,5 +55,5 @@ jobs:
           git commit -m "Automatic class mapping and map name update"
           git push
         fi
-    - name: Run unit tests
-      run: ./gradlew tests:test --rerun --stacktrace
+    - name: Build and test
+      uses: ./.github/actions/build-and-test

@@ -9,7 +9,7 @@ fn compute(costs: &[i32], width: usize, height: usize, targets: &[i32]) -> Optio
         return None;
     }
 
-    let mut weights = vec![-1; len];
+    let mut weights = vec![-1i32; len];
     let mut frontier = VecDeque::new();
     for &target in targets {
         let pos = usize::try_from(target).ok()?;
@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn supports_multiple_targets_and_ignores_out_of_range_targets() {
         let weights = compute(&[1, 5, 1, 1], 2, 2, &[0, 3, 99]).unwrap();
-        assert_eq!(weights, [0, 1, 1, 0]);
+        assert_eq!(weights, [0, 5, 1, 0]);
     }
 
     #[test]

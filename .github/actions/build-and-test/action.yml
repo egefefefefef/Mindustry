@@ -1,0 +1,73 @@
+name: Build and test
+description: Test Java and Rust, then build the desktop and server JARs on Linux.
+runs:
+  using: composite
+  steps:
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Test Rust pathfinder (with and without JNI)
+      shell: bash
+      run: |
+        cargo test --manifest-path native/pathfinding/Cargo.toml
+        cargo test --manifest-path native/pathfinding/Cargo.toml --no-default-features
+
+    - name: Build and bundle Linux native library
+      shell: bash
+      run: |
+        cargo build --manifest-path native/pathfinding/Cargo.toml --release
+        mkdir -p desktop/src/main/resources/native/linux-x86_64
+        cp native/pathfinding/target/release/libmindustry_pathfinding.so \
+          desktop/src/main/resources/native/linux-x86_64/
+
+    - name: Run Java tests
+      shell: bash
+      run: ./gradlew tests:test --rerun --stacktrace
+
+    - name: Upload Java test reports
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: java-test-reports
+        path: |
+          tests/build/reports/tests/test/
+          tests/build/test-results/test/
+        if-no-files-found: ignore
+
+    - name: Build desktop and server JARs
+      shell: bash
+      run: |
+        ./gradlew desktop:dist server:dist --stacktrace
+        test -f desktop/build/libs/Mindustry.jar
+        test -f server/build/libs/server-release.jar
+
+    - name: Verify packaged JNI library
+      shell: bash
+      run: |
+        jar tf desktop/build/libs/Mindustry.jar | grep -Fx 'native/linux-x86_64/libmindustry_pathfinding.so'
+        tmpdir=$(mktemp -d)
+        trap 'rm -rf "$tmpdir"' EXIT
+        cat > "$tmpdir/NativeSmokeTest.java" <<'JAVA'
+        import java.util.Arrays;
+        import mindustry.desktop.NativeFlowfieldJNI;
+
+        public class NativeSmokeTest{
+            public static void main(String[] args){
+                int[] result = NativeFlowfieldJNI.compute(new int[]{1, 5, 1, 1}, 2, 2, new int[]{0, 3});
+                if(!Arrays.equals(result, new int[]{0, 5, 1, 0})){
+                    throw new AssertionError("Unexpected native flowfield: " + Arrays.toString(result));
+                }
+            }
+        }
+        JAVA
+        javac -cp desktop/build/libs/Mindustry.jar -d "$tmpdir" "$tmpdir/NativeSmokeTest.java"
+        java -Djava.library.path="$tmpdir" -cp "desktop/build/libs/Mindustry.jar:$tmpdir" NativeSmokeTest
+
+    - name: Upload JARs
+      uses: actions/upload-artifact@v7
+      with:
+        name: mindustry-linux-jars
+        path: |
+          desktop/build/libs/Mindustry.jar
+          server/build/libs/server-release.jar
+        if-no-files-found: error
