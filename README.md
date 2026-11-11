@@ -28,6 +28,8 @@ First, make sure you have [JDK 17](https://adoptium.net/temurin/releases/?os=any
 
 ### Windows
 
+For a ready-to-run Windows x64 package, download `Mindustry-Windows-x64.zip` from the fork's Releases, extract it, and run `Start-Mindustry.bat`. It uses the Java runtime in the included `jre` folder; Java does not need to be installed separately. To publish this package, manually run the `Tests` workflow with `publish_windows` selected.
+
 _Running:_ `gradlew desktop:run`  
 _Building:_ `gradlew desktop:dist`  
 _Sprite Packing:_ `gradlew tools:pack`
