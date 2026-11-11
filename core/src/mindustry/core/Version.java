@@ -16,6 +16,8 @@ public class Version{
     public static String commitHash = "unknown";
     /** Date that this version was built. */
     public static String buildDate = "unknown";
+    /** Version of this distribution, if set by the build. */
+    public static String distributionVersion = "";
     /** Number specifying the major version, e.g. '4' */
     public static int number;
     /** Build number, e.g. '43'. set to '-1' for custom builds. */
@@ -40,6 +42,7 @@ public class Version{
         modifier = map.get("modifier");
         commitHash = map.get("commitHash", "unknown");
         buildDate = map.get("buildDate", "unknown");
+        distributionVersion = map.get("distributionVersion", "");
         isSteam = modifier.contains("steam");
         if(map.get("build").contains(".")){
             String[] split = map.get("build").split("\\.");
@@ -79,6 +82,7 @@ public class Version{
 
     /** get menu version without colors */
     public static String combined(){
+        if(!distributionVersion.isEmpty()) return "Mindustry v" + distributionVersion;
         if(build == -1){
             return "custom build";
         }

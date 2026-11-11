@@ -1,273 +1,389 @@
-name: Deployment
+name: Mindustry v1.0 platform builds
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish verified packages to the stable v1.0 release
+        type: boolean
+        default: false
 
-permissions: {}
+permissions:
+  contents: read
+
 jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: 17
+    - run: git init ../Arc && git -C ../Arc fetch --depth=1 https://github.com/Anuken/Arc 7445105cd2683daf5b9ac7033ebb07265d3e814d && git -C ../Arc checkout --detach FETCH_HEAD
+    - uses: gradle/actions/setup-gradle@v6
+    - uses: ./.github/actions/build-and-test
+
   desktop:
     name: Desktop (${{ matrix.platform }})
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: windows
-            os: windows-latest
-          - platform: linux
-            os: ubuntu-latest
-          - platform: macos
-            os: macos-latest
+        - platform: windows
+          os: windows-latest
+          native: mindustry_pathfinding.dll
+          native_dir: windows-x86_64
+        - platform: linux
+          os: ubuntu-latest
+          native: libmindustry_pathfinding.so
+          native_dir: linux-x86_64
+        - platform: macos-arm64
+          os: macos-15
+          native: libmindustry_pathfinding.dylib
+          native_dir: macos-aarch64
+        - platform: macos-x64
+          os: macos-15-intel
+          native: libmindustry_pathfinding.dylib
+          native_dir: macos-x86_64
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v7
-    - name: Set up JDK 17
-      uses: actions/setup-java@v5
+    - uses: actions/setup-java@v5
       with:
         distribution: temurin
         java-version: 17
     - name: Fetch Arc
-      run: git clone --depth=1 --branch=master https://github.com/Anuken/Arc ../Arc
       shell: bash
+      run: git init ../Arc && git -C ../Arc fetch --depth=1 https://github.com/Anuken/Arc 7445105cd2683daf5b9ac7033ebb07265d3e814d && git -C ../Arc checkout --detach FETCH_HEAD
     - uses: dtolnay/rust-toolchain@stable
-    - name: Build and bundle Rust pathfinder
+    - name: Build native pathfinder
       shell: bash
       run: |
-        cargo test --manifest-path native/pathfinding/Cargo.toml --no-default-features
+        cargo test --manifest-path native/pathfinding/Cargo.toml
         cargo build --manifest-path native/pathfinding/Cargo.toml --release
-        case "${{ matrix.platform }}" in
-          windows) os=windows; file=mindustry_pathfinding.dll ;;
-          linux) os=linux; file=libmindustry_pathfinding.so ;;
-          macos) os=macos; file=libmindustry_pathfinding.dylib ;;
-        esac
-        machine=$(uname -m)
-        case "$machine" in arm64|aarch64) arch=aarch64 ;; *) arch=x86_64 ;; esac
-        mkdir -p "core/src/main/resources/native/$os-$arch"
-        cp "native/pathfinding/target/release/$file" "core/src/main/resources/native/$os-$arch/$file"
+        mkdir -p desktop/src/main/resources/native/${{ matrix.native_dir }}
+        cp native/pathfinding/target/release/${{ matrix.native }} desktop/src/main/resources/native/${{ matrix.native_dir }}/
     - uses: gradle/actions/setup-gradle@v6
     - name: Build desktop JAR
-      run: ./gradlew desktop:dist -Pbuildversion=${GITHUB_REF_NAME#v}
       shell: bash
-    - name: Package native application image
-      run: jpackage --type app-image --input desktop/build/libs --main-jar Mindustry.jar --main-class mindustry.desktop.DesktopLauncher --name Mindustry --dest desktop/build/release
+      run: |
+        set -o pipefail
+        ./gradlew desktop:dist -Pbuildversion=1.0 -PdistributionVersion=1.0 --stacktrace 2>&1 | tee desktop-build.log || {
+          python3 -c 'import pathlib; s=pathlib.Path("desktop-build.log").read_text(errors="replace")[-10000:]; print("::error::"+s.replace("%","%25").replace("\r","%0D").replace("\n","%0A"))'
+          exit 1
+        }
+    - name: Check JAR metadata and native library
       shell: bash
-    - name: Archive Windows application
+      env:
+        NATIVE: native/${{ matrix.native_dir }}/${{ matrix.native }}
+      run: |
+        python3 - <<'PY'
+        import os, zipfile
+        with zipfile.ZipFile('desktop/build/libs/Mindustry.jar') as z:
+            assert z.testzip() is None
+            assert os.environ['NATIVE'] in z.namelist()
+            p = z.read('version.properties').decode()
+            assert 'distributionVersion=1.0' in p and 'build=1.0' in p, p
+        PY
+    - name: Package Windows
       if: matrix.platform == 'windows'
-      run: Compress-Archive -Path desktop/build/release/Mindustry -DestinationPath desktop/build/release/Mindustry-windows.zip
       shell: pwsh
-    - name: Archive Linux/macOS application
-      if: matrix.platform != 'windows'
-      run: cd desktop/build/release && zip -rq "Mindustry-${{ matrix.platform }}.zip" Mindustry
+      run: |
+        New-Item -ItemType Directory -Force build/package/Mindustry | Out-Null
+        Copy-Item desktop/build/libs/Mindustry.jar build/package/Mindustry/
+        Copy-Item packaging/windows/Start-Mindustry.bat build/package/Mindustry/
+        jlink --add-modules ALL-MODULE-PATH --strip-debug --no-man-pages --no-header-files --compress=2 --output build/package/Mindustry/jre
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        & build/package/Mindustry/jre/bin/java.exe -version
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        if (-not (Test-Path build/package/Mindustry/jre/bin/javaw.exe)) { throw 'javaw.exe missing' }
+        Compress-Archive -Path build/package/Mindustry -DestinationPath build/Mindustry-v1.0-Windows-x64.zip
+    - name: Package Linux
+      if: matrix.platform == 'linux'
       shell: bash
+      run: |
+        mkdir -p build/package/Mindustry
+        cp desktop/build/libs/Mindustry.jar packaging/linux/Start-Mindustry.sh build/package/Mindustry/
+        chmod +x build/package/Mindustry/Start-Mindustry.sh
+        jlink --add-modules ALL-MODULE-PATH --strip-debug --no-man-pages --no-header-files --compress=2 --output build/package/Mindustry/jre
+        build/package/Mindustry/jre/bin/java -version
+        (cd build/package && zip -qry -y ../Mindustry-v1.0-Linux-x64.zip Mindustry)
+    - name: Package macOS app
+      if: startsWith(matrix.platform, 'macos')
+      shell: bash
+      run: |
+        jpackage --type app-image --input desktop/build/libs --main-jar Mindustry.jar --main-class mindustry.desktop.DesktopLauncher --name Mindustry --app-version 1.0 --java-options '-XstartOnFirstThread' --dest build/package
+        test -x build/package/Mindustry.app/Contents/MacOS/Mindustry
+        /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Mindustry.app/Contents/Info.plist | grep -Fx 1.0
+        ditto -c -k --sequesterRsrc --keepParent build/package/Mindustry.app "build/${{ matrix.platform }}.zip"
+    - name: Verify archive
+      shell: bash
+      env:
+        PLATFORM: ${{ matrix.platform }}
+      run: |
+        python3 - <<'PY'
+        import os, zipfile
+        platform = os.environ['PLATFORM']
+        name = {'windows':'Mindustry-v1.0-Windows-x64.zip','linux':'Mindustry-v1.0-Linux-x64.zip'}.get(platform, platform + '.zip')
+        with zipfile.ZipFile('build/' + name) as z:
+            assert z.testzip() is None
+            names = set(z.namelist())
+            if platform == 'windows':
+                assert {'Mindustry/Mindustry.jar', 'Mindustry/Start-Mindustry.bat', 'Mindustry/jre/bin/javaw.exe'} <= names
+            elif platform == 'linux':
+                assert {'Mindustry/Mindustry.jar', 'Mindustry/Start-Mindustry.sh', 'Mindustry/jre/bin/java'} <= names
+            else:
+                assert 'Mindustry.app/Contents/MacOS/Mindustry' in names
+                assert 'Mindustry.app/Contents/Info.plist' in names
+        PY
     - uses: actions/upload-artifact@v7
       with:
-        name: platform-desktop-${{ matrix.platform }}
-        path: desktop/build/release/Mindustry-${{ matrix.platform }}.zip
+        name: desktop-${{ matrix.platform }}
+        path: build/*.zip
+        if-no-files-found: error
+    - name: Upload build log on failure
+      if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: desktop-${{ matrix.platform }}-log
+        path: desktop-build.log
+        if-no-files-found: ignore
+
+  macos_archive:
+    name: Combine macOS architectures
+    needs: desktop
+    runs-on: macos-15
+    steps:
+    - uses: actions/download-artifact@v7
+      with:
+        pattern: desktop-macos-*
+        path: mac
+    - name: Combine and verify
+      run: |
+        mkdir -p package/Apple-Silicon package/Intel
+        ditto -x -k mac/desktop-macos-arm64/macos-arm64.zip package/Apple-Silicon
+        ditto -x -k mac/desktop-macos-x64/macos-x64.zip package/Intel
+        test -x package/Apple-Silicon/Mindustry.app/Contents/MacOS/Mindustry
+        test -x package/Intel/Mindustry.app/Contents/MacOS/Mindustry
+        ditto -c -k --sequesterRsrc --keepParent package Mindustry-v1.0-macOS.zip
+        unzip -tq Mindustry-v1.0-macOS.zip
+    - uses: actions/upload-artifact@v7
+      with:
+        name: platform-macos
+        path: Mindustry-v1.0-macOS.zip
         if-no-files-found: error
 
   android:
-    name: Android APK
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
-    - name: Set up JDK 17
-      uses: actions/setup-java@v5
+    - uses: actions/setup-java@v5
       with:
         distribution: temurin
         java-version: 17
-    - uses: android-actions/setup-android@v3
-    - name: Install Android SDK and NDK
-      run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
+    - uses: android-actions/setup-android@v4
+    - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.2.12479018'
     - uses: dtolnay/rust-toolchain@stable
       with:
         targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
-    - name: Build Rust libraries for Android ABIs
+    - name: Build native Android libraries
       run: |
         export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
-        echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> "$GITHUB_ENV"
         cargo install cargo-ndk --locked
-        cargo ndk -t arm64-v8a -t armeabi-v7a -t x86 -t x86_64 -o android/libs build --release --manifest-path native/pathfinding/Cargo.toml
-    - name: Fetch Arc
-      run: git clone --depth=1 --branch=master https://github.com/Anuken/Arc ../Arc
+        cd native/pathfinding
+        cargo ndk -t arm64-v8a -t armeabi-v7a -t x86 -t x86_64 -o ../../android/libs build --release
+    - run: git init ../Arc && git -C ../Arc fetch --depth=1 https://github.com/Anuken/Arc 7445105cd2683daf5b9ac7033ebb07265d3e814d && git -C ../Arc checkout --detach FETCH_HEAD
     - uses: gradle/actions/setup-gradle@v6
     - name: Build APK
       run: |
-        ./gradlew android:assembleDebug -Pbuildversion=${GITHUB_REF_NAME#v}
-        mkdir -p build/release
-        cp android/build/outputs/apk/debug/*.apk build/release/Mindustry-Android.apk
+        set -o pipefail
+        ./gradlew android:assembleDebug -Pbuildversion=1.0 -PdistributionVersion=1.0 --stacktrace 2>&1 | tee android-build.log || {
+          python3 -c 'import pathlib; s=pathlib.Path("android-build.log").read_text(errors="replace")[-12000:]; print("::error::"+s.replace("%","%25").replace("\r","%0D").replace("\n","%0A"))'
+          exit 1
+        }
+    - name: Verify and package APK
+      run: |
+        set -euo pipefail
+        mapfile -t apks < <(find android/build/outputs/apk/debug -name '*.apk' -type f)
+        test "${#apks[@]}" -gt 0
+        mkdir -p build/android-package
+        for apk in "${apks[@]}"; do
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | grep "versionName='1.0'"
+          unzip -tq "$apk"
+          unzip -p "$apk" assets/version.properties | grep -Fx 'distributionVersion=1.0'
+          for abi in arm64-v8a armeabi-v7a x86 x86_64; do unzip -l "$apk" | grep "lib/$abi/libmindustry_pathfinding.so"; done
+          cp "$apk" build/android-package/
+        done
+        (cd build/android-package && zip -q ../Mindustry-v1.0-Android.zip ./*.apk)
+        unzip -tq build/Mindustry-v1.0-Android.zip
     - uses: actions/upload-artifact@v7
       with:
         name: platform-android
-        path: build/release/Mindustry-Android.apk
+        path: build/Mindustry-v1.0-Android.zip
         if-no-files-found: error
+    - name: Upload build log on failure
+      if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: android-log
+        path: android-build.log
+        if-no-files-found: ignore
 
   ios:
-    name: iOS IPA (unsigned)
-    runs-on: macos-latest
+    name: iOS signed IPA
+    runs-on: macos-15
+    outputs:
+      available: ${{ steps.signing.outputs.available }}
     steps:
     - uses: actions/checkout@v7
-    - name: Set up JDK 17
-      uses: actions/setup-java@v5
+    - name: Check signing configuration
+      id: signing
+      env:
+        CERT: ${{ secrets.IOS_SIGNING_CERTIFICATE_BASE64 }}
+        PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+        PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        IDENTITY: ${{ secrets.IOS_SIGN_IDENTITY }}
+      run: |
+        if [[ -z "$CERT" || -z "$PASSWORD" || -z "$PROFILE" || -z "$IDENTITY" ]]; then
+          echo 'available=false' >> "$GITHUB_OUTPUT"
+          echo '::warning::iOS IPA not built: IOS_SIGNING_CERTIFICATE_BASE64, IOS_CERTIFICATE_PASSWORD, IOS_PROVISIONING_PROFILE_BASE64 and IOS_SIGN_IDENTITY are required for Apple signing.'
+        else
+          echo 'available=true' >> "$GITHUB_OUTPUT"
+        fi
+    - uses: actions/setup-java@v5
+      if: steps.signing.outputs.available == 'true'
       with:
         distribution: temurin
         java-version: 17
-    - name: Fetch Arc
-      run: git clone --depth=1 --branch=master https://github.com/Anuken/Arc ../Arc
     - uses: dtolnay/rust-toolchain@stable
+      if: steps.signing.outputs.available == 'true'
       with:
         targets: aarch64-apple-ios
-    - name: Build Rust static library for iOS
+    - name: Install Apple signing certificate and provisioning profile
+      if: steps.signing.outputs.available == 'true'
+      env:
+        CERT: ${{ secrets.IOS_SIGNING_CERTIFICATE_BASE64 }}
+        PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+        PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
       run: |
+        echo "$CERT" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+        echo "$PROFILE" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+        security create-keychain -p temporary "$RUNNER_TEMP/build.keychain"
+        security set-keychain-settings -lut 21600 "$RUNNER_TEMP/build.keychain"
+        security unlock-keychain -p temporary "$RUNNER_TEMP/build.keychain"
+        security import "$RUNNER_TEMP/certificate.p12" -k "$RUNNER_TEMP/build.keychain" -P "$PASSWORD" -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple: -s -k temporary "$RUNNER_TEMP/build.keychain"
+        security list-keychains -d user -s "$RUNNER_TEMP/build.keychain"
+        security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+        uuid=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$RUNNER_TEMP/profile.plist")
+        mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+        cp "$RUNNER_TEMP/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$uuid.mobileprovision"
+        echo "IOS_PROFILE_UUID=$uuid" >> "$GITHUB_ENV"
+    - name: Build signed IPA
+      if: steps.signing.outputs.available == 'true'
+      env:
+        IOS_SIGN_IDENTITY: ${{ secrets.IOS_SIGN_IDENTITY }}
+      run: |
+        git init ../Arc && git -C ../Arc fetch --depth=1 https://github.com/Anuken/Arc 7445105cd2683daf5b9ac7033ebb07265d3e814d && git -C ../Arc checkout --detach FETCH_HEAD
         cargo build --manifest-path native/pathfinding/Cargo.toml --release --no-default-features --target aarch64-apple-ios
         mkdir -p ios/libs
-        cp native/pathfinding/target/aarch64-apple-ios/release/libmindustry_pathfinding.a ios/libs/libmindustry_pathfinding.a
-    - uses: gradle/actions/setup-gradle@v6
-    - name: Build unsigned IPA
+        cp native/pathfinding/target/aarch64-apple-ios/release/libmindustry_pathfinding.a ios/libs/
+        set -o pipefail
+        ./gradlew ios:createIPA -Pbuildversion=1.0 -PdistributionVersion=1.0 -PsignIdentity="$IOS_SIGN_IDENTITY" -PprovisioningProfile="$IOS_PROFILE_UUID" --stacktrace 2>&1 | tee ios-build.log
+    - name: Verify and package signed IPA
+      if: steps.signing.outputs.available == 'true'
       run: |
-        ./gradlew ios:createIPA -Pbuildversion=${GITHUB_REF_NAME#v} -PiosSkipSigning=true
-        IPA=$(find ios/build -type f -name '*.ipa' -print -quit)
-        test -n "$IPA"
-        mkdir -p build/release
-        cp "$IPA" build/release/Mindustry-iOS-unsigned.ipa
+        set -euo pipefail
+        ipa=$(find ios/build -name '*.ipa' -type f -print -quit)
+        test -n "$ipa"
+        unzip -tq "$ipa"
+        mkdir -p build/ios-check build/ios-package
+        unzip -q "$ipa" -d build/ios-check
+        app=$(find build/ios-check/Payload -maxdepth 1 -name '*.app' -type d -print -quit)
+        test -n "$app"
+        test -f "$app/embedded.mobileprovision"
+        codesign --verify --deep --strict "$app"
+        /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist" | grep -Fx 1.0
+        cp "$ipa" build/ios-package/Mindustry.ipa
+        (cd build/ios-package && zip -q ../Mindustry-v1.0-iOS.zip Mindustry.ipa)
+        unzip -tq build/Mindustry-v1.0-iOS.zip
     - uses: actions/upload-artifact@v7
+      if: steps.signing.outputs.available == 'true'
       with:
         name: platform-ios
-        path: build/release/Mindustry-iOS-unsigned.ipa
+        path: build/Mindustry-v1.0-iOS.zip
         if-no-files-found: error
 
-  deploy:
-    needs: [desktop, android, ios]
-    permissions:
-      contents: write # for release creation (svenstaro/upload-release-action)
-
+  publish:
+    name: Publish stable v1.0
+    needs: [tests, desktop, macos_archive, android, ios]
+    if: ${{ always() && inputs.publish && needs.tests.result == 'success' && needs.desktop.result == 'success' && needs.macos_archive.result == 'success' && needs.android.result == 'success' && needs.ios.result == 'success' }}
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v7
-    - name: Set up JDK 17
-      uses: actions/setup-java@v5
+    - uses: actions/download-artifact@v7
       with:
-        distribution: 'temurin'
-        java-version: 17
-    - name: Set env
-      run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-    - name: Add Arc release
-      if: ${{ github.repository == 'Anuken/Mindustry' }}
-      run: |
-        git config --global user.email "actions@github.com"
-        git config --global user.name "Github Actions"
-        git clone --depth=1 --branch=master https://github.com/Anuken/Arc ../Arc
-        cd ../Arc
-        git tag ${RELEASE_VERSION}
-        git push https://Anuken:${{ secrets.API_TOKEN_GITHUB }}@github.com/Anuken/Arc ${RELEASE_VERSION};
-        cd ../Mindustry
-    - name: Fetch Arc for fork build
-      if: ${{ github.repository != 'Anuken/Mindustry' }}
-      run: git clone --depth=1 --branch=master https://github.com/Anuken/Arc ../Arc
-    - name: Create artifacts
-      run: |
-        ./gradlew desktop:dist server:dist core:depsJar core:assetsJar core:mergedJavadoc -Pbuildversion=${RELEASE_VERSION:1}
-    - name: Update docs
-      if: ${{ github.repository == 'Anuken/Mindustry' }}
-      run: |
-        cd ../
-        git config --global user.email "cli@github.com"
-        git config --global user.name "Github Actions"
-        git clone --depth=1 https://github.com/MindustryGame/docs.git
-        cd docs
-        find . -maxdepth 1 ! -name ".git" ! -name . -exec rm -r {} \;
-        cd ../
-        cp -a Mindustry/core/build/javadoc/. docs/
-        cd docs
-        git add .
-        git commit --allow-empty -m "Update ${RELEASE_VERSION:1}"
-        git push https://Anuken:${{ secrets.API_TOKEN_ORG_GITHUB }}@github.com/MindustryGame/docs
-        cd ../Mindustry
-    - name: Update F-Droid build string
-      if: ${{ github.repository == 'Anuken/Mindustry' }}
-      run: |
-        git clone --depth=1 --branch=master https://github.com/Anuken/MindustryBuilds ../MindustryBuilds
-        cd ../MindustryBuilds
-        echo "Updating version to ${RELEASE_VERSION:1}"
-        BNUM=$(($GITHUB_RUN_NUMBER + 1000))
-        echo versionName=8-fdroid-${RELEASE_VERSION:1}$'\n'versionCode=${BNUM} > version_fdroid.txt
-        git add .
-        git commit -m "Updating to build ${RELEASE_VERSION:1}"
-        git push https://Anuken:${{ secrets.API_TOKEN_GITHUB }}@github.com/Anuken/MindustryBuilds
-        cd ../Mindustry
-    - name: Download platform builds
-      uses: actions/download-artifact@v7
+        pattern: desktop-windows
+        path: assets
+        merge-multiple: true
+    - uses: actions/download-artifact@v7
+      with:
+        pattern: desktop-linux
+        path: assets
+        merge-multiple: true
+    - uses: actions/download-artifact@v7
       with:
         pattern: platform-*
-        path: release-platform-assets
+        path: assets
         merge-multiple: true
+    - name: Verify assets and publish
+      env:
+        GH_TOKEN: ${{ github.token }}
+        IOS_AVAILABLE: ${{ needs.ios.outputs.available }}
+      run: |
+        set -euo pipefail
+        for asset in Mindustry-v1.0-Windows-x64.zip Mindustry-v1.0-Linux-x64.zip Mindustry-v1.0-macOS.zip Mindustry-v1.0-Android.zip; do
+          test -s "assets/$asset"
+          unzip -tq "assets/$asset"
+        done
+        if [ "$IOS_AVAILABLE" = true ]; then
+          test -s assets/Mindustry-v1.0-iOS.zip
+          unzip -tq assets/Mindustry-v1.0-iOS.zip
+          ios_note='iOS: signed IPA included; installation requires a device permitted by the provisioning profile.'
+        else
+          test ! -e assets/Mindustry-v1.0-iOS.zip
+          ios_note='iOS is not included: Apple signing certificate and provisioning profile were not configured.'
+        fi
+        cat > release-notes.md <<NOTES
+        # Mindustry v1.0
 
-    - name: Upload Windows build
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: release-platform-assets/Mindustry-windows.zip
-        asset_name: Mindustry-windows.zip
-        tag: ${{ github.ref }}
+        A distribution of Mindustry with the Rust flowfield pathfinding backend and Java fallback.
 
-    - name: Upload Linux build
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: release-platform-assets/Mindustry-linux.zip
-        asset_name: Mindustry-linux.zip
-        tag: ${{ github.ref }}
+        ## Platforms
+        - Windows x64: extract the ZIP and run Start-Mindustry.bat; Java is included.
+        - Linux x64: extract the ZIP and run Start-Mindustry.sh; Java is included.
+        - macOS: Intel and Apple Silicon app bundles are provided separately inside the ZIP.
+        - Android: debug-signed APK for supported Android ABIs; this is not signed with an official store key.
+        - $ios_note
 
-    - name: Upload macOS build
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: release-platform-assets/Mindustry-macos.zip
-        asset_name: Mindustry-macos.zip
-        tag: ${{ github.ref }}
-
-    - name: Upload Android APK
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: release-platform-assets/Mindustry-Android.apk
-        asset_name: Mindustry-Android.apk
-        tag: ${{ github.ref }}
-
-    - name: Upload iOS IPA (unsigned)
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: release-platform-assets/Mindustry-iOS-unsigned.ipa
-        asset_name: Mindustry-iOS-unsigned.ipa
-        tag: ${{ github.ref }}
-
-    - name: Upload client artifacts
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: desktop/build/libs/Mindustry.jar
-        tag: ${{ github.ref }}
-    - name: Upload server artifacts
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: server/build/libs/server-release.jar
-        tag: ${{ github.ref }}
-
-    - name: Upload dependency JAR
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: core/build/libs/core-release-deps.jar
-        asset_name: dependencies.jar
-        tag: ${{ github.ref }}
-
-    - name: Upload assets JAR
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: core/build/libs/core-release-assets.jar
-        asset_name: assets.jar
-        tag: ${{ github.ref }}
+        ## Build information and limitations
+        Built from source commit $GITHUB_SHA with JDK 17, Gradle and the Rust toolchain. Java and Rust tests and package integrity checks ran in GitHub Actions. Desktop graphical launch and Android device installation were not tested in CI. The macOS builds are not notarized and may require explicit approval in System Settings. This fork is not an official upstream release.
+        NOTES
+        # Never retarget an existing tag, even on a retry.
+        if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v1.0" > tag.json 2>/dev/null; then
+          tagged=$(gh api "repos/$GITHUB_REPOSITORY/commits/v1.0" --jq .sha)
+          test "$tagged" = "$GITHUB_SHA" || { echo '::error::Existing v1.0 tag points to a different commit'; exit 1; }
+        else
+          gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref=refs/tags/v1.0 -f sha="$GITHUB_SHA" >/dev/null
+        fi
+        test "$(gh api "repos/$GITHUB_REPOSITORY/commits/v1.0" --jq .sha)" = "$GITHUB_SHA"
+        if gh release view v1.0 >/dev/null 2>&1; then
+          echo '::error::A v1.0 release already exists; refusing to overwrite it.'
+          exit 1
+        fi
+        gh release create v1.0 --verify-tag --draft --title 'Mindustry v1.0' --notes-file release-notes.md assets/*.zip
+        gh release edit v1.0 --draft=false --prerelease=false --latest

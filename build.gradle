@@ -139,6 +139,11 @@ allprojects{
                 props["number"] = versionNumber
                 props["modifier"] = versionModifier
                 props["build"] = buildid
+                if(project.hasProperty("distributionVersion")){
+                    props["distributionVersion"] = project.property("distributionVersion").toString()
+                }else{
+                    props.remove("distributionVersion")
+                }
                 props["buildDate"] = new SimpleDateFormat("MMMM d, yyyy HH:mm a", Locale.getDefault()).format(new Date())
                 props["commitHash"] = "unknown"
                 if(project.hasProperty("showCommitHash")){
