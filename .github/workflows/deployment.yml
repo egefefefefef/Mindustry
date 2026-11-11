@@ -4,7 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish verified packages to the stable v1.0 release
+        description: Publish verified desktop packages to the stable v1.0 release
+        type: boolean
+        default: false
+      build_mobile:
+        description: Also attempt Android and signed iOS builds
         type: boolean
         default: false
 
@@ -196,6 +200,7 @@ jobs:
         if-no-files-found: error
 
   android:
+    if: ${{ inputs.build_mobile }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
@@ -256,6 +261,7 @@ jobs:
 
   ios:
     name: iOS signed IPA
+    if: ${{ inputs.build_mobile }}
     runs-on: macos-15
     outputs:
       available: ${{ steps.signing.outputs.available }}
@@ -341,8 +347,8 @@ jobs:
 
   publish:
     name: Publish stable v1.0
-    needs: [tests, desktop, macos_archive, android, ios]
-    if: ${{ always() && inputs.publish && needs.tests.result == 'success' && needs.desktop.result == 'success' && needs.macos_archive.result == 'success' && needs.android.result == 'success' && needs.ios.result == 'success' }}
+    needs: [tests, desktop, macos_archive]
+    if: ${{ always() && inputs.publish && needs.tests.result == 'success' && needs.desktop.result == 'success' && needs.macos_archive.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -360,41 +366,32 @@ jobs:
         merge-multiple: true
     - uses: actions/download-artifact@v7
       with:
-        pattern: platform-*
+        pattern: platform-macos
         path: assets
         merge-multiple: true
     - name: Verify assets and publish
       env:
         GH_TOKEN: ${{ github.token }}
-        IOS_AVAILABLE: ${{ needs.ios.outputs.available }}
       run: |
         set -euo pipefail
-        for asset in Mindustry-v1.0-Windows-x64.zip Mindustry-v1.0-Linux-x64.zip Mindustry-v1.0-macOS.zip Mindustry-v1.0-Android.zip; do
+        for asset in Mindustry-v1.0-Windows-x64.zip Mindustry-v1.0-Linux-x64.zip Mindustry-v1.0-macOS.zip; do
           test -s "assets/$asset"
           unzip -tq "assets/$asset"
         done
-        if [ "$IOS_AVAILABLE" = true ]; then
-          test -s assets/Mindustry-v1.0-iOS.zip
-          unzip -tq assets/Mindustry-v1.0-iOS.zip
-          ios_note='iOS: signed IPA included; installation requires a device permitted by the provisioning profile.'
-        else
-          test ! -e assets/Mindustry-v1.0-iOS.zip
-          ios_note='iOS is not included: Apple signing certificate and provisioning profile were not configured.'
-        fi
         cat > release-notes.md <<NOTES
         # Mindustry v1.0
 
-        A distribution of Mindustry with the Rust flowfield pathfinding backend and Java fallback.
+        A distribution of Mindustry with the Rust flowfield pathfinding backend, Java fallback, and power graph cleanup when buildings are picked up.
 
         ## Platforms
         - Windows x64: extract the ZIP and run Start-Mindustry.bat; Java is included.
         - Linux x64: extract the ZIP and run Start-Mindustry.sh; Java is included.
         - macOS: Intel and Apple Silicon app bundles are provided separately inside the ZIP.
-        - Android: debug-signed APK for supported Android ABIs; this is not signed with an official store key.
-        - $ios_note
+        - Android: not included; the APK build has not passed verification.
+        - iOS: not included; Apple signing and provisioning are required.
 
         ## Build information and limitations
-        Built from source commit $GITHUB_SHA with JDK 17, Gradle and the Rust toolchain. Java and Rust tests and package integrity checks ran in GitHub Actions. Desktop graphical launch and Android device installation were not tested in CI. The macOS builds are not notarized and may require explicit approval in System Settings. This fork is not an official upstream release.
+        Built from source commit $GITHUB_SHA with JDK 17, Gradle and the Rust toolchain. Java and Rust tests and package integrity checks ran in GitHub Actions. Desktop graphical launch was not tested in CI. The macOS builds are not notarized and may require explicit approval in System Settings. This fork is not an official upstream release.
         NOTES
         # Never retarget an existing tag, even on a retry.
         if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v1.0" > tag.json 2>/dev/null; then

@@ -1854,9 +1854,11 @@ abstract class BuildingComp implements Posc, Teamc, Healthc, Buildingc, Timerc, 
     /** Called right after this building is picked up. */
     public void afterPickedUp(){
         if(power != null){
-            //TODO can lead to ghost graphs?
+            // Remove any remaining graph links before resetting the carried building's power state.
+            powerGraphRemoved();
             power.graph = new PowerGraph();
             power.links.clear();
+            power.init = false;
             if(block.consPower != null && !block.consPower.buffered){
                 power.status = 0f;
             }
