@@ -21,7 +21,7 @@ Bleeding-edge upstream builds are available [here](https://github.com/Anuken/Min
 
 ### GitHub Actions CI
 
-The `Tests` and `Pull Request Tests` workflows run on pushes and pull requests, respectively; either can also be started manually from the Actions tab. They run the Java and Rust tests, build the desktop and server JARs, and check that the desktop JAR can load its bundled Linux x86-64 Rust library. Download both JARs from the `mindustry-linux-jars` artifact. Java test reports are uploaded when available, including on failure. These CI artifacts are not a substitute for the separate platform release builds.
+The `Tests` and `Pull Request Tests` workflows run on pushes and pull requests, respectively; either can also be started manually from the Actions tab. They run the Java and Rust tests, build the desktop and server JARs, and check that the desktop JAR can load its bundled Linux x86-64 Rust library. Download both JARs from the `mindustry-linux-jars` artifact. Java test reports are uploaded when available, including on failure. To publish the tested JARs as a GitHub prerelease, manually run `Tests` on the desired branch and select `publish_release`. These CI artifacts are not a substitute for the separate platform release builds.
 
 If you'd rather compile on your own, follow these instructions.
 First, make sure you have [JDK 17](https://adoptium.net/temurin/releases/?os=any&arch=any&version=17) installed. **Other JDK versions will not work.** Open a terminal in the Mindustry directory and run the following commands:
