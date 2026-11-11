@@ -163,3 +163,10 @@ if(!project.ext.hasSprites()){
         }
     }
 }
+
+// R8 consumes the merged Java resources jar, so ensure it is produced first.
+afterEvaluate{
+    tasks.named("minifyDebugWithR8").configure{
+        dependsOn "mergeDebugJavaResource"
+    }
+}
