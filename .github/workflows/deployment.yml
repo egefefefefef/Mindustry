@@ -222,7 +222,7 @@ jobs:
       run: |
         set -o pipefail
         ./gradlew android:assembleDebug -Pbuildversion=1.0 -PdistributionVersion=1.0 --stacktrace 2>&1 | tee android-build.log || {
-          python3 -c 'import pathlib; s=pathlib.Path("android-build.log").read_text(errors="replace"); lines=s.splitlines(); out=[f"{i}: {line}" for i,line in enumerate(lines) if any(x in line for x in ("Caused by:","ResourceException", "ERROR:", "Exception", "Execution failed", "Error:", "mergeDebugJava", "minifyDebug"))]; print("::error::"+("\n".join(out)[:20000]).replace("%","%25").replace("\r","%0D").replace("\n","%0A"))'
+          python3 -c 'import pathlib; root=pathlib.Path("android/build/intermediates/merged_java_res"); print("::error::MERGED_JAVA_RES="+repr([(str(p),p.stat().st_size) for p in root.rglob("*") if p.is_file()])); s=pathlib.Path("android-build.log").read_text(errors="replace"); lines=s.splitlines(); out=[f"{i}: {line}" for i,line in enumerate(lines) if any(x in line for x in ("Caused by:","ResourceException", "ERROR:", "Exception", "Execution failed", "Error:", "mergeDebugJava", "minifyDebug"))]; print("::error::"+("\n".join(out)[:20000]).replace("%","%25").replace("\r","%0D").replace("\n","%0A"))'
           exit 1
         }
     - name: Verify and package APK
