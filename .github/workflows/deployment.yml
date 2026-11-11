@@ -23,6 +23,13 @@ jobs:
     - run: git init ../Arc && git -C ../Arc fetch --depth=1 https://github.com/Anuken/Arc 7445105cd2683daf5b9ac7033ebb07265d3e814d && git -C ../Arc checkout --detach FETCH_HEAD
     - uses: gradle/actions/setup-gradle@v6
     - uses: ./.github/actions/build-and-test
+    - name: Build versioned shared desktop JAR
+      run: ./gradlew desktop:dist -Pbuildversion=1.0 -PdistributionVersion=1.0 --stacktrace
+    - uses: actions/upload-artifact@v7
+      with:
+        name: shared-desktop-jar
+        path: desktop/build/libs/Mindustry.jar
+        if-no-files-found: error
 
   desktop:
     name: Desktop (${{ matrix.platform }})
@@ -47,6 +54,7 @@ jobs:
           native: libmindustry_pathfinding.dylib
           native_dir: macos-x86_64
     runs-on: ${{ matrix.os }}
+    needs: tests
     steps:
     - uses: actions/checkout@v7
     - uses: actions/setup-java@v5
@@ -54,6 +62,7 @@ jobs:
         distribution: temurin
         java-version: 17
     - name: Fetch Arc
+      if: ${{ !startsWith(matrix.platform, 'macos') }}
       shell: bash
       run: git init ../Arc && git -C ../Arc fetch --depth=1 https://github.com/Anuken/Arc 7445105cd2683daf5b9ac7033ebb07265d3e814d && git -C ../Arc checkout --detach FETCH_HEAD
     - uses: dtolnay/rust-toolchain@stable
@@ -65,7 +74,19 @@ jobs:
         mkdir -p desktop/src/main/resources/native/${{ matrix.native_dir }}
         cp native/pathfinding/target/release/${{ matrix.native }} desktop/src/main/resources/native/${{ matrix.native_dir }}/
     - uses: gradle/actions/setup-gradle@v6
+      if: ${{ !startsWith(matrix.platform, 'macos') }}
+    - name: Download shared desktop JAR for macOS
+      if: startsWith(matrix.platform, 'macos')
+      uses: actions/download-artifact@v7
+      with:
+        name: shared-desktop-jar
+        path: desktop/build/libs
+    - name: Add macOS native library
+      if: startsWith(matrix.platform, 'macos')
+      shell: bash
+      run: jar uf desktop/build/libs/Mindustry.jar -C desktop/src/main/resources native/${{ matrix.native_dir }}/${{ matrix.native }}
     - name: Build desktop JAR
+      if: ${{ !startsWith(matrix.platform, 'macos') }}
       shell: bash
       run: |
         set -o pipefail
@@ -199,7 +220,7 @@ jobs:
       run: |
         set -o pipefail
         ./gradlew android:assembleDebug -Pbuildversion=1.0 -PdistributionVersion=1.0 --stacktrace 2>&1 | tee android-build.log || {
-          python3 -c 'import pathlib; s=pathlib.Path("android-build.log").read_text(errors="replace")[-12000:]; print("::error::"+s.replace("%","%25").replace("\r","%0D").replace("\n","%0A"))'
+          python3 -c 'import pathlib; s=pathlib.Path("android-build.log").read_text(errors="replace"); lines=s.splitlines(); out=[f"{i}: {line}" for i,line in enumerate(lines) if any(x in line for x in ("Caused by:","ResourceException", "ERROR:", "Exception", "Execution failed", "Error:"))]; print("::error::"+("\n".join(out)[:20000]).replace("%","%25").replace("\r","%0D").replace("\n","%0A"))'
           exit 1
         }
     - name: Verify and package APK
