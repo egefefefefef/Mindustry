@@ -216,6 +216,8 @@ jobs:
         cargo ndk -t arm64-v8a -t armeabi-v7a -t x86 -t x86_64 -o ../../android/libs build --release
     - run: git init ../Arc && git -C ../Arc fetch --depth=1 https://github.com/Anuken/Arc 7445105cd2683daf5b9ac7033ebb07265d3e814d && git -C ../Arc checkout --detach FETCH_HEAD
     - uses: gradle/actions/setup-gradle@v6
+    - name: Use the Gradle version supported by Android Gradle Plugin 8.2
+      run: ./gradlew wrapper --gradle-version 8.2.1 --distribution-type bin
     - name: Build APK
       run: |
         set -o pipefail
