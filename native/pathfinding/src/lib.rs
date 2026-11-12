@@ -13,15 +13,20 @@ fn compute(costs: &[i32], width: usize, height: usize, targets: &[i32]) -> Optio
 
     let mut weights = vec![-1i32; len];
     let mut frontier = VecDeque::new();
+    // A tile already waiting in the queue will use its latest weight when
+    // popped; enqueuing it again only repeats work.
+    let mut queued = vec![false; len];
     for &target in targets {
         let pos = usize::try_from(target).ok()?;
         if pos < len && weights[pos] != 0 {
             weights[pos] = 0;
             frontier.push_front(pos);
+            queued[pos] = true;
         }
     }
 
     while let Some(pos) = frontier.pop_back() {
+        queued[pos] = false;
         let base = weights[pos];
         if base < 0 {
             continue;
@@ -39,7 +44,10 @@ fn compute(costs: &[i32], width: usize, height: usize, targets: &[i32]) -> Optio
             let candidate = base.saturating_add(step);
             if weights[next] < 0 || weights[next] > candidate {
                 weights[next] = candidate;
-                frontier.push_front(next);
+                if !queued[next] {
+                    frontier.push_front(next);
+                    queued[next] = true;
+                }
             }
         };
 
@@ -221,5 +229,95 @@ mod tests {
     fn rejects_bad_dimensions() {
         assert!(compute(&[1, 1], 3, 1, &[0]).is_none());
         assert!(compute(&[], 0, 0, &[]).is_none());
+    }
+}
+
+#[cfg(test)]
+mod optimization_tests {
+    use super::compute;
+    use std::collections::VecDeque;
+
+    // The v1.1 kernel retained as a reference for parity and same-runner A/B timing.
+    fn baseline(costs: &[i32], width: usize, height: usize, targets: &[i32]) -> Option<Vec<i32>> {
+        let len = width.checked_mul(height)?;
+        if width == 0 || height == 0 || len != costs.len() { return None; }
+        let mut weights = vec![-1; len];
+        let mut queue = VecDeque::new();
+        for &target in targets {
+            let pos = usize::try_from(target).ok()?;
+            if pos < len && weights[pos] != 0 { weights[pos] = 0; queue.push_front(pos); }
+        }
+        while let Some(pos) = queue.pop_back() {
+            let base: i32 = weights[pos];
+            if base < 0 { continue; }
+            let x = pos % width;
+            let y = pos / width;
+            let mut visit = |next: usize| {
+                let step = costs[next];
+                if step >= 0 {
+                    let candidate = base.saturating_add(step);
+                    if weights[next] < 0 || weights[next] > candidate {
+                        weights[next] = candidate;
+                        queue.push_front(next);
+                    }
+                }
+            };
+            if x > 0 { visit(pos - 1); }
+            if x + 1 < width { visit(pos + 1); }
+            if y > 0 { visit(pos - width); }
+            if y + 1 < height { visit(pos + width); }
+        }
+        Some(weights)
+    }
+
+    fn grid(width: usize, height: usize, seed: u64, uniform: bool) -> Vec<i32> {
+        let mut state = seed;
+        (0..width * height).map(|_| {
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            if uniform { 1 } else if (state >> 32) % 100 < 12 { -1 } else { 1 + ((state >> 40) % 4) as i32 }
+        }).collect()
+    }
+
+    #[test]
+    fn queued_kernel_matches_v1_1_across_varied_fields() {
+        for width in [1, 2, 3, 8, 17, 64] {
+            for height in [1, 2, 5, 16, 37] {
+                for seed in 0..20 {
+                    let mut costs = grid(width, height, seed, false);
+                    // Include zero-cost and saturating edges.
+                    for i in (0..costs.len()).step_by(13) { costs[i] = if seed % 2 == 0 { 0 } else { i32::MAX }; }
+                    let end = (costs.len() - 1) as i32;
+                    for targets in [vec![], vec![0], vec![end, 0, end], vec![end + 10], vec![-1]] {
+                        assert_eq!(compute(&costs, width, height, &targets), baseline(&costs, width, height, &targets), "{width}x{height}, seed {seed}, targets {targets:?}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[ignore = "manual same-process kernel benchmark"]
+    fn compare_queued_kernel() {
+        use std::hint::black_box;
+        use std::time::Instant;
+        for size in [64, 128, 256] {
+            for uniform in [true, false] {
+                let costs = grid(size, size, 781259 + size as u64, uniform);
+                let targets = [(size * size / 2 + size / 2) as i32];
+                assert_eq!(baseline(&costs, size, size, &targets), compute(&costs, size, size, &targets));
+                let mut totals = [0u128; 2];
+                for sample in 0..64 {
+                    for k in 0..2 {
+                        let mode = (sample + k) % 2;
+                        let start = Instant::now();
+                        let result = if mode == 0 { baseline(black_box(&costs), size, size, &targets) } else { compute(black_box(&costs), size, size, &targets) };
+                        black_box(result);
+                        let elapsed = start.elapsed().as_nanos();
+                        if sample >= 16 { totals[mode] += elapsed; }
+                    }
+                }
+                println!("AB {} {} baseline_ms={:.4} candidate_ms={:.4}", size, if uniform {"uniform"} else {"weighted"}, totals[0] as f64 / 48e6, totals[1] as f64 / 48e6);
+            }
+        }
     }
 }
