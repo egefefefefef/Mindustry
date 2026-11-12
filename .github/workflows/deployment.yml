@@ -1,10 +1,10 @@
-name: Mindustry v1.1 platform builds
+name: Mindustry v1.2 platform builds
 
 on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish verified desktop packages to the stable v1.1 release
+        description: Publish verified desktop packages to the stable v1.2 release
         type: boolean
         default: false
       build_mobile:
@@ -47,7 +47,7 @@ jobs:
         path: build/performance/
         if-no-files-found: ignore
     - name: Build versioned shared desktop JAR
-      run: ./gradlew desktop:dist -Pbuildversion=1.1 -PdistributionVersion=1.1 -PnativePhysicsDefault=true --stacktrace
+      run: ./gradlew desktop:dist -Pbuildversion=1.2 -PdistributionVersion=1.2 -PnativePhysicsDefault=true --stacktrace
     - uses: actions/upload-artifact@v7
       with:
         name: shared-desktop-jar
@@ -113,7 +113,7 @@ jobs:
       shell: bash
       run: |
         set -o pipefail
-        ./gradlew desktop:dist -Pbuildversion=1.1 -PdistributionVersion=1.1 -PnativePhysicsDefault=true --stacktrace 2>&1 | tee desktop-build.log || {
+        ./gradlew desktop:dist -Pbuildversion=1.2 -PdistributionVersion=1.2 -PnativePhysicsDefault=true --stacktrace 2>&1 | tee desktop-build.log || {
           python3 -c 'import pathlib; s=pathlib.Path("desktop-build.log").read_text(errors="replace")[-10000:]; print("::error::"+s.replace("%","%25").replace("\r","%0D").replace("\n","%0A"))'
           exit 1
         }
@@ -127,8 +127,10 @@ jobs:
         with zipfile.ZipFile('desktop/build/libs/Mindustry.jar') as z:
             assert z.testzip() is None
             assert os.environ['NATIVE'] in z.namelist()
+            assert 'mindustry/ui/dialogs/DeveloperPanel.class' in z.namelist()
+            assert 'mindustry/core/DevTestTools.class' in z.namelist()
             p = z.read('version.properties').decode()
-            assert 'distributionVersion=1.1' in p and 'build=1.1' in p and 'nativePhysicsDefault=true' in p, p
+            assert 'distributionVersion=1.2' in p and 'build=1.2' in p and 'nativePhysicsDefault=true' in p, p
         PY
     - name: Package Windows
       if: matrix.platform == 'windows'
@@ -142,7 +144,7 @@ jobs:
         & build/package/Mindustry/jre/bin/java.exe -version
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         if (-not (Test-Path build/package/Mindustry/jre/bin/javaw.exe)) { throw 'javaw.exe missing' }
-        Compress-Archive -Path build/package/Mindustry -DestinationPath build/Mindustry-v1.1-Windows-x64.zip
+        Compress-Archive -Path build/package/Mindustry -DestinationPath build/Mindustry-v1.2-Windows-x64.zip
     - name: Package Linux
       if: matrix.platform == 'linux'
       shell: bash
@@ -152,7 +154,7 @@ jobs:
         chmod +x build/package/Mindustry/Start-Mindustry.sh
         jlink --add-modules ALL-MODULE-PATH --strip-debug --no-man-pages --no-header-files --compress=2 --output build/package/Mindustry/jre
         build/package/Mindustry/jre/bin/java -version
-        (cd build/package && zip -qry -y ../Mindustry-v1.1-Linux-x64.zip Mindustry)
+        (cd build/package && zip -qry -y ../Mindustry-v1.2-Linux-x64.zip Mindustry)
     - name: Package macOS app
       if: startsWith(matrix.platform, 'macos')
       shell: bash
@@ -160,9 +162,9 @@ jobs:
         # jpackage's default jlink options strip native commands, including java.
         # Supply an explicit runtime so the packaged JRE can be smoke-tested too.
         jlink --add-modules ALL-MODULE-PATH --strip-debug --no-man-pages --no-header-files --compress=2 --output build/macos-jre
-        jpackage --type app-image --runtime-image build/macos-jre --input desktop/build/libs --main-jar Mindustry.jar --main-class mindustry.desktop.DesktopLauncher --name Mindustry --app-version 1.1 --java-options '-XstartOnFirstThread' --dest build/package
+        jpackage --type app-image --runtime-image build/macos-jre --input desktop/build/libs --main-jar Mindustry.jar --main-class mindustry.desktop.DesktopLauncher --name Mindustry --app-version 1.2 --java-options '-XstartOnFirstThread' --dest build/package
         test -x build/package/Mindustry.app/Contents/MacOS/Mindustry
-        /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Mindustry.app/Contents/Info.plist | grep -Fx 1.1
+        /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Mindustry.app/Contents/Info.plist | grep -Fx 1.2
         ditto -c -k --sequesterRsrc --keepParent build/package/Mindustry.app "build/${{ matrix.platform }}.zip"
     - name: Verify native physics from packaged Java runtime
       shell: bash
@@ -182,7 +184,7 @@ jobs:
         python3 - <<'PY'
         import os, zipfile
         platform = os.environ['PLATFORM']
-        name = {'windows':'Mindustry-v1.1-Windows-x64.zip','linux':'Mindustry-v1.1-Linux-x64.zip'}.get(platform, platform + '.zip')
+        name = {'windows':'Mindustry-v1.2-Windows-x64.zip','linux':'Mindustry-v1.2-Linux-x64.zip'}.get(platform, platform + '.zip')
         with zipfile.ZipFile('build/' + name) as z:
             assert z.testzip() is None
             names = set(z.namelist())
@@ -225,12 +227,12 @@ jobs:
         ditto -x -k mac/desktop-macos-x64/macos-x64.zip package/Intel
         test -x package/Apple-Silicon/Mindustry.app/Contents/MacOS/Mindustry
         test -x package/Intel/Mindustry.app/Contents/MacOS/Mindustry
-        ditto -c -k --sequesterRsrc --keepParent package Mindustry-v1.1-macOS.zip
-        unzip -tq Mindustry-v1.1-macOS.zip
+        ditto -c -k --sequesterRsrc --keepParent package Mindustry-v1.2-macOS.zip
+        unzip -tq Mindustry-v1.2-macOS.zip
     - uses: actions/upload-artifact@v7
       with:
         name: platform-macos
-        path: Mindustry-v1.1-macOS.zip
+        path: Mindustry-v1.2-macOS.zip
         if-no-files-found: error
 
   android:
@@ -260,7 +262,7 @@ jobs:
     - name: Build APK
       run: |
         set -o pipefail
-        ./gradlew android:assembleDebug -Pbuildversion=1.1 -PdistributionVersion=1.1 -PnativePhysicsDefault=true --stacktrace 2>&1 | tee android-build.log || {
+        ./gradlew android:assembleDebug -Pbuildversion=1.2 -PdistributionVersion=1.2 -PnativePhysicsDefault=true --stacktrace 2>&1 | tee android-build.log || {
           python3 -c 'import pathlib; root=pathlib.Path("android/build/intermediates/merged_java_res"); print("::error::MERGED_JAVA_RES="+repr([(str(p),p.stat().st_size) for p in root.rglob("*") if p.is_file()])); s=pathlib.Path("android-build.log").read_text(errors="replace"); lines=s.splitlines(); out=[f"{i}: {line}" for i,line in enumerate(lines) if any(x in line for x in ("Caused by:","ResourceException", "ERROR:", "Exception", "Execution failed", "Error:", "mergeDebugJava", "minifyDebug"))]; print("::error::"+("\n".join(out)[:20000]).replace("%","%25").replace("\r","%0D").replace("\n","%0A"))'
           exit 1
         }
@@ -272,18 +274,18 @@ jobs:
         mkdir -p build/android-package
         for apk in "${apks[@]}"; do
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | grep "versionName='1.1'"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | grep "versionName='1.2'"
           unzip -tq "$apk"
-          unzip -p "$apk" assets/version.properties | grep -Fx 'distributionVersion=1.1'
+          unzip -p "$apk" assets/version.properties | grep -Fx 'distributionVersion=1.2'
           for abi in arm64-v8a armeabi-v7a x86 x86_64; do unzip -l "$apk" | grep "lib/$abi/libmindustry_pathfinding.so"; done
           cp "$apk" build/android-package/
         done
-        (cd build/android-package && zip -q ../Mindustry-v1.1-Android.zip ./*.apk)
-        unzip -tq build/Mindustry-v1.1-Android.zip
+        (cd build/android-package && zip -q ../Mindustry-v1.2-Android.zip ./*.apk)
+        unzip -tq build/Mindustry-v1.2-Android.zip
     - uses: actions/upload-artifact@v7
       with:
         name: platform-android
-        path: build/Mindustry-v1.1-Android.zip
+        path: build/Mindustry-v1.2-Android.zip
         if-no-files-found: error
     - name: Upload build log on failure
       if: failure()
@@ -354,7 +356,7 @@ jobs:
         mkdir -p ios/libs
         cp native/pathfinding/target/aarch64-apple-ios/release/libmindustry_pathfinding.a ios/libs/
         set -o pipefail
-        ./gradlew ios:createIPA -Pbuildversion=1.1 -PdistributionVersion=1.1 -PnativePhysicsDefault=true -PsignIdentity="$IOS_SIGN_IDENTITY" -PprovisioningProfile="$IOS_PROFILE_UUID" --stacktrace 2>&1 | tee ios-build.log
+        ./gradlew ios:createIPA -Pbuildversion=1.2 -PdistributionVersion=1.2 -PnativePhysicsDefault=true -PsignIdentity="$IOS_SIGN_IDENTITY" -PprovisioningProfile="$IOS_PROFILE_UUID" --stacktrace 2>&1 | tee ios-build.log
     - name: Verify and package signed IPA
       if: steps.signing.outputs.available == 'true'
       run: |
@@ -368,19 +370,19 @@ jobs:
         test -n "$app"
         test -f "$app/embedded.mobileprovision"
         codesign --verify --deep --strict "$app"
-        /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist" | grep -Fx 1.1
+        /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist" | grep -Fx 1.2
         cp "$ipa" build/ios-package/Mindustry.ipa
-        (cd build/ios-package && zip -q ../Mindustry-v1.1-iOS.zip Mindustry.ipa)
-        unzip -tq build/Mindustry-v1.1-iOS.zip
+        (cd build/ios-package && zip -q ../Mindustry-v1.2-iOS.zip Mindustry.ipa)
+        unzip -tq build/Mindustry-v1.2-iOS.zip
     - uses: actions/upload-artifact@v7
       if: steps.signing.outputs.available == 'true'
       with:
         name: platform-ios
-        path: build/Mindustry-v1.1-iOS.zip
+        path: build/Mindustry-v1.2-iOS.zip
         if-no-files-found: error
 
   publish:
-    name: Publish stable v1.1
+    name: Publish stable v1.2
     needs: [tests, desktop, macos_archive]
     if: ${{ always() && inputs.publish && needs.tests.result == 'success' && needs.desktop.result == 'success' && needs.macos_archive.result == 'success' }}
     runs-on: ubuntu-latest
@@ -408,14 +410,20 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
-        for asset in Mindustry-v1.1-Windows-x64.zip Mindustry-v1.1-Linux-x64.zip Mindustry-v1.1-macOS.zip; do
+        for asset in Mindustry-v1.2-Windows-x64.zip Mindustry-v1.2-Linux-x64.zip Mindustry-v1.2-macOS.zip; do
           test -s "assets/$asset"
           unzip -tq "assets/$asset"
         done
         cat > release-notes.md <<NOTES
-        # Mindustry v1.1
+        # Mindustry v1.2
 
-        A distribution of Mindustry with experimental Rust physics enabled by default, Rust flowfield pathfinding, and Java fallbacks. It also includes power graph cleanup when buildings are picked up.
+        An unofficial fork distribution with experimental Rust unit physics enabled by default, Rust flowfield pathfinding, and Java fallbacks.
+
+        ## What's new
+        - Developer test panel under Settings > Developer Options: spawn units near the player, choose unit type and team, start a wave, enable metrics, and remove units created by the panel.
+        - Optional unit-cap toggle, with confirmation. Panel actions are restricted to local single-player games and can affect saved world state; back up important saves before testing.
+        - Performance overlay reports the last completed physics layers and cumulative Rust, Java-disabled and Java-fallback layer steps. Empty layers are not counted.
+        - Includes the v1.1 power graph cleanup and experimental Rust physics; no OpenGL renderer rewrite is included.
 
         ## Platforms
         - Windows x64: extract the ZIP and run Start-Mindustry.bat; Java is included.
@@ -428,19 +436,19 @@ jobs:
         Built from source commit $GITHUB_SHA with JDK 17, Gradle and the Rust toolchain. Java and Rust tests, physics parity checks and packaged native-library smoke tests ran in GitHub Actions. Rust physics is experimental; it falls back to Java for unsupported cases or unavailable native libraries, and mixed-platform multiplayer determinism has not been established. To disable it, add the JVM option -Dmindustry.experimentalNativePhysics=false. Desktop graphical launch was not tested in CI. The macOS builds are not notarized and may require explicit approval in System Settings. This fork is not an official upstream release.
         NOTES
         # Never retarget an existing tag, even on a retry.
-        if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v1.1" > tag.json 2>/dev/null; then
-          tagged=$(gh api "repos/$GITHUB_REPOSITORY/commits/v1.1" --jq .sha)
-          test "$tagged" = "$GITHUB_SHA" || { echo '::error::Existing v1.1 tag points to a different commit'; exit 1; }
+        if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v1.2" > tag.json 2>/dev/null; then
+          tagged=$(gh api "repos/$GITHUB_REPOSITORY/commits/v1.2" --jq .sha)
+          test "$tagged" = "$GITHUB_SHA" || { echo '::error::Existing v1.2 tag points to a different commit'; exit 1; }
         else
-          gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref=refs/tags/v1.1 -f sha="$GITHUB_SHA" >/dev/null
+          gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref=refs/tags/v1.2 -f sha="$GITHUB_SHA" >/dev/null
         fi
-        test "$(gh api "repos/$GITHUB_REPOSITORY/commits/v1.1" --jq .sha)" = "$GITHUB_SHA"
-        if gh release view v1.1 >/dev/null 2>&1; then
-          echo '::error::A v1.1 release already exists; refusing to overwrite it.'
+        test "$(gh api "repos/$GITHUB_REPOSITORY/commits/v1.2" --jq .sha)" = "$GITHUB_SHA"
+        if gh release view v1.2 >/dev/null 2>&1; then
+          echo '::error::A v1.2 release already exists; refusing to overwrite it.'
           exit 1
         fi
-        gh release create v1.1 --verify-tag --draft --title 'Mindustry v1.1' --notes-file release-notes.md assets/*.zip
-        gh release edit v1.1 --draft=false --prerelease=false --latest
+        gh release create v1.2 --verify-tag --draft --title 'Mindustry v1.2' --notes-file release-notes.md assets/*.zip
+        gh release edit v1.2 --draft=false --prerelease=false --latest
 
   windows-preview:
     if: ${{ inputs.diagnostics_preview }}
@@ -467,7 +475,7 @@ jobs:
     - uses: gradle/actions/setup-gradle@v6
     - name: Build preview JAR
       shell: bash
-      run: ./gradlew desktop:dist -Pbuildversion=1.1 -PdistributionVersion=1.1-dev-panel-preview -PnativePhysicsDefault=true --stacktrace
+      run: ./gradlew desktop:dist -Pbuildversion=1.2 -PdistributionVersion=1.2-dev-panel-preview -PnativePhysicsDefault=true --stacktrace
     - name: Package preview with Java
       shell: pwsh
       run: |
@@ -481,7 +489,7 @@ jobs:
       shell: bash
       env:
         PLATFORM: windows
-        EXPECTED_DISTRIBUTION_VERSION: 1.1-dev-panel-preview
+        EXPECTED_DISTRIBUTION_VERSION: 1.2-dev-panel-preview
       run: python3 packaging/verify_native_physics.py
     - name: Upload preview (not a release)
       uses: actions/upload-artifact@v7

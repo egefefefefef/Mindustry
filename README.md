@@ -21,14 +21,14 @@ Bleeding-edge upstream builds are available [here](https://github.com/Anuken/Min
 
 ### GitHub Actions CI
 
-The `Tests` and `Pull Request Tests` workflows run on pushes and pull requests, respectively; either can also be started manually from the Actions tab. They run the Java and Rust tests, build the desktop and server JARs, and check that the desktop JAR can load its bundled Linux x86-64 Rust library. Download both JARs from the `mindustry-linux-jars` artifact. Java test reports are uploaded when available, including on failure. The `Mindustry v1.1 platform builds` workflow builds and verifies platform packages when run manually. Its `publish` option publishes the verified packages together under the v1.1 tag; it refuses to move an existing tag. A signed iOS build requires `IOS_SIGNING_CERTIFICATE_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, and `IOS_SIGN_IDENTITY` Actions secrets.
+The `Tests` and `Pull Request Tests` workflows run on pushes and pull requests, respectively; either can also be started manually from the Actions tab. They run the Java and Rust tests, build the desktop and server JARs, and check that the desktop JAR can load its bundled Linux x86-64 Rust library. Download both JARs from the `mindustry-linux-jars` artifact. Java test reports are uploaded when available, including on failure. The `Mindustry v1.2 platform builds` workflow builds and verifies platform packages when run manually. Its `publish` option publishes the verified packages together under the v1.2 tag; it refuses to move an existing tag. A signed iOS build requires `IOS_SIGNING_CERTIFICATE_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, and `IOS_SIGN_IDENTITY` Actions secrets.
 
 If you'd rather compile on your own, follow these instructions.
 First, make sure you have [JDK 17](https://adoptium.net/temurin/releases/?os=any&arch=any&version=17) installed. **Other JDK versions will not work.** Open a terminal in the Mindustry directory and run the following commands:
 
 ### Windows
 
-For a ready-to-run Windows x64 package, download `Mindustry-v1.1-Windows-x64.zip` from the fork's Releases, extract it, and run `Start-Mindustry.bat`. It uses the Java runtime in the included `jre` folder; Java does not need to be installed separately.
+For a ready-to-run Windows x64 package, download `Mindustry-v1.2-Windows-x64.zip` from the fork's Releases, extract it, and run `Start-Mindustry.bat`. It uses the Java runtime in the included `jre` folder; Java does not need to be installed separately.
 
 _Running:_ `gradlew desktop:run`  
 _Building:_ `gradlew desktop:dist`  
@@ -42,7 +42,7 @@ _Sprite Packing:_ `./gradlew tools:pack`
 
 ### Server
 
-Server builds are bundled with each released build (in Releases). If you'd rather compile on your own, replace 'desktop' with 'server', e.g. `gradlew server:dist`.
+The v1.2 fork release contains desktop packages only. To build the server yourself, replace 'desktop' with 'server', e.g. `gradlew server:dist`.
 
 ### Android
 

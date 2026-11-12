@@ -14,10 +14,13 @@ public class NativePhysicsSmoke{
     public static void main(String[] args) throws Exception{
         System.clearProperty("mindustry.experimentalNativePhysics");
         Version.init();
-        String expectedVersion = args.length == 0 ? "1.1" : args[0];
+        String expectedVersion = args.length == 0 ? "1.2" : args[0];
         if(!expectedVersion.equals(Version.distributionVersion) || !Version.nativePhysicsDefault){
             throw new AssertionError("Expected " + expectedVersion + " with Rust physics enabled by default");
         }
+        // Verify the developer panel is present in the actual packaged JAR.
+        Class.forName("mindustry.ui.dialogs.DeveloperPanel", false, NativePhysicsSmoke.class.getClassLoader());
+        Class.forName("mindustry.core.DevTestTools", false, NativePhysicsSmoke.class.getClassLoader());
         Vars.net = new Net(null);
         float[] expected = {10f, 10f, 3f, 1f, 15f, 10f, 3f, 1f};
         if(!NativeFlowfieldJNI.computePhysics(expected, new int[]{1, 1}, 0f, 0f, 100f, 100f)){

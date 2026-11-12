@@ -19,4 +19,4 @@ for path in (jar, java):
         raise RuntimeError(f"Packaged file missing: {path}")
 with tempfile.TemporaryDirectory() as tmp:
     subprocess.run(["javac", "-cp", str(jar), "-d", tmp, str(root / "packaging/NativePhysicsSmoke.java")], check=True)
-    subprocess.run([str(java), "-Djava.library.path=" + tmp, "-cp", str(jar) + os.pathsep + tmp, "NativePhysicsSmoke", os.environ.get("EXPECTED_DISTRIBUTION_VERSION", "1.1")], cwd=tmp, check=True)
+    subprocess.run([str(java), "-Djava.library.path=" + tmp, "-cp", str(jar) + os.pathsep + tmp, "NativePhysicsSmoke", os.environ.get("EXPECTED_DISTRIBUTION_VERSION", "1.2")], cwd=tmp, check=True)

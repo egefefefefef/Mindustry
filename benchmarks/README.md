@@ -26,7 +26,7 @@ in-game profiles and larger samples for production decisions.
 
 Experimental Rust unit physics is available on desktop and Android when the
 matching native library is bundled and the JVM property
-`-Dmindustry.experimentalNativePhysics=true` is set. It is **off by default in ordinary builds**, but enabled by default in the v1.1 desktop distribution. Override with `-Dmindustry.experimentalNativePhysics=false`. This is a prototype and has not been validated across all game, mod or
+`-Dmindustry.experimentalNativePhysics=true` is set. It is **off by default in ordinary builds**, but enabled by default in the v1.1 and v1.2 desktop distributions. Override with `-Dmindustry.experimentalNativePhysics=false`. This is a prototype and has not been validated across all game, mod or
 multiplayer scenarios. iOS and missing/incompatible libraries use Java.
 Each layer has private reusable buffers; Rust copies results back only after a
 successful step. Invalid inputs or exactly stacked bodies fall back to the
