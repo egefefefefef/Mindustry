@@ -115,7 +115,7 @@ public class PhysicsProcess implements AsyncProcess{
         futures.clear();
         for(int i = 0; i < layers; i++){
             PhysicsWorld world = physics[i];
-            futures.add(Vars.mainExecutor.submit(world::update));
+            futures.add(Vars.mainExecutor.submit(() -> { world.update(); }));
         }
     }
 
