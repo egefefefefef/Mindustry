@@ -1,6 +1,7 @@
 import arc.math.geom.Rect;
 import mindustry.Vars;
 import mindustry.async.PhysicsProcess.PhysicsWorld;
+import mindustry.async.PhysicsProcess.PhysicsBackend;
 import mindustry.async.PhysicsProcess.PhysicsWorld.PhysicsBody;
 import mindustry.core.Version;
 import mindustry.desktop.NativeFlowfieldJNI;
@@ -13,8 +14,9 @@ public class NativePhysicsSmoke{
     public static void main(String[] args) throws Exception{
         System.clearProperty("mindustry.experimentalNativePhysics");
         Version.init();
-        if(!"1.1".equals(Version.distributionVersion) || !Version.nativePhysicsDefault){
-            throw new AssertionError("Expected v1.1 with Rust physics enabled by default");
+        String expectedVersion = args.length == 0 ? "1.1" : args[0];
+        if(!expectedVersion.equals(Version.distributionVersion) || !Version.nativePhysicsDefault){
+            throw new AssertionError("Expected " + expectedVersion + " with Rust physics enabled by default");
         }
         Vars.net = new Net(null);
         float[] expected = {10f, 10f, 3f, 1f, 15f, 10f, 3f, 1f};
@@ -27,6 +29,7 @@ public class NativePhysicsSmoke{
         world.add(b);
         world.update();
         if(!nativeInitialized(world)) throw new AssertionError("Default physics did not try native backend");
+        if(world.lastBackend() != PhysicsBackend.rust) throw new AssertionError("Rust backend diagnostic missing");
         if(Math.abs(a.x - expected[0]) > 0.0001f || Math.abs(b.x - expected[4]) > 0.0001f){
             throw new AssertionError("Default physics produced unexpected positions");
         }
@@ -37,7 +40,14 @@ public class NativePhysicsSmoke{
         disabled.add(body(15f));
         disabled.update();
         if(nativeInitialized(disabled)) throw new AssertionError("Explicit Java override was ignored");
-        System.out.println("Packaged v1.1 Rust physics and Java override verified");
+        if(disabled.lastBackend() != PhysicsBackend.javaDisabled) throw new AssertionError("Java override diagnostic missing");
+        PhysicsWorld fallback = new PhysicsWorld(new Rect(0f, 0f, 100f, 100f));
+        fallback.add(body(5f));
+        fallback.add(body(5f));
+        if(fallback.update(true) || fallback.lastBackend() != PhysicsBackend.javaFallback){
+            throw new AssertionError("Stacked-body fallback diagnostic missing");
+        }
+        System.out.println("Packaged " + expectedVersion + " Rust physics, Java override and diagnostics verified");
     }
 
     private static PhysicsBody body(float x){
