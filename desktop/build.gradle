@@ -211,3 +211,19 @@ platforms.each{ platform ->
 
     }
 }
+
+// Optional synthetic benchmark, kept out of production and regular tests.
+sourceSets{
+    performance{
+        java.srcDirs = ["../benchmarks/src"]
+        compileClasspath += sourceSets.main.output + configurations.runtimeClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+tasks.register('performanceBenchmark', JavaExec){
+    dependsOn classes, performanceClasses
+    classpath = sourceSets.performance.runtimeClasspath
+    mainClass = 'mindustry.ai.PerformanceBench'
+    args new File(rootDir, 'build/performance').absolutePath
+}
