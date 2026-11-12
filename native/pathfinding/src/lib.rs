@@ -1,4 +1,7 @@
 mod physics;
+// Frozen v1.1 implementation, compiled only for opt-in A/B benchmarking.
+#[cfg(feature = "bench-jni")]
+mod physics_baseline;
 
 use std::collections::VecDeque;
 
@@ -160,65 +163,41 @@ mod jni_api {
     jni_entry!(Java_mindustry_desktop_NativeFlowfieldJNI_computeNative);
     jni_entry!(Java_mindustry_android_NativeFlowfieldJNI_computeNative);
 
-    // Retain buffers only for up to 16,384 bodies per native physics thread;
-    // allocator capacity may be larger than the exact requested length.
-    const MAX_CACHED_BODIES: usize = 16_384;
-    thread_local! {
-        static PHYSICS_BUFFERS: std::cell::RefCell<(Vec<f32>, Vec<i32>)> =
-            const { std::cell::RefCell::new((Vec::new(), Vec::new())) };
-    }
-
-    fn physics_with_buffers(
-        env: &JNIEnv, data: &JFloatArray, local: &JIntArray,
-        bounds: [jfloat; 4], lengths: (usize, usize),
-        buffers: &mut (Vec<f32>, Vec<i32>),
-    ) -> Option<()> {
-        let (data_len, local_len) = lengths;
-        buffers.0.resize(data_len, 0.0);
-        buffers.1.resize(local_len, 0);
-        env.get_float_array_region(data, 0, &mut buffers.0).ok()?;
-        env.get_int_array_region(local, 0, &mut buffers.1).ok()?;
-        if !super::physics::update(&mut buffers.0, &buffers.1, bounds) { return None; }
-        env.set_float_array_region(data, 0, &buffers.0).ok()?;
-        Some(())
-    }
-
-    fn run_physics_impl(
-        env: JNIEnv, data: JFloatArray, local: JIntArray,
-        bounds: [jfloat; 4], reuse: bool,
+    fn run_physics(
+        env: JNIEnv,
+        data: JFloatArray,
+        local: JIntArray,
+        x: jfloat, y: jfloat, width: jfloat, height: jfloat,
+        baseline: bool,
     ) -> jboolean {
         let result = (|| {
             let data_len = env.get_array_length(&data).ok()? as usize;
             let local_len = env.get_array_length(&local).ok()? as usize;
             if local_len.checked_mul(4)? != data_len { return None; }
-            let lengths = (data_len, local_len);
-            if reuse && local_len <= MAX_CACHED_BODIES {
-                PHYSICS_BUFFERS.try_with(|cell| {
-                    let mut buffers = cell.try_borrow_mut().ok()?;
-                    physics_with_buffers(&env, &data, &local, bounds, lengths, &mut buffers)
-                }).ok()?
-            } else {
-                physics_with_buffers(&env, &data, &local, bounds, lengths, &mut (Vec::new(), Vec::new()))
-            }
+            let mut values = vec![0.0; data_len];
+            let mut flags = vec![0; local_len];
+            env.get_float_array_region(&data, 0, &mut values).ok()?;
+            env.get_int_array_region(&local, 0, &mut flags).ok()?;
+            #[cfg(feature = "bench-jni")]
+            let success = if baseline {
+                super::physics_baseline::update(&mut values, &flags, [x, y, width, height])
+            } else { super::physics::update(&mut values, &flags, [x, y, width, height]) };
+            #[cfg(not(feature = "bench-jni"))]
+            let success = { let _ = baseline; super::physics::update(&mut values, &flags, [x, y, width, height]) };
+            if !success { return None; }
+            env.set_float_array_region(&data, 0, &values).ok()?;
+            Some(())
         })();
         if result.is_some() { JNI_TRUE } else { JNI_FALSE }
     }
 
-    fn run_physics(
-        env: JNIEnv, data: JFloatArray, local: JIntArray,
-        x: jfloat, y: jfloat, width: jfloat, height: jfloat,
-    ) -> jboolean {
-        run_physics_impl(env, data, local, [x, y, width, height], true)
-    }
-
-    // These two entry points only exist in opt-in benchmark builds.
     #[cfg(feature = "bench-jni")]
     #[no_mangle]
     pub extern "system" fn Java_PhysicsAllocationBench_baseline(
         env: JNIEnv, _class: JClass, data: JFloatArray, local: JIntArray,
         x: jfloat, y: jfloat, width: jfloat, height: jfloat,
     ) -> jboolean {
-        run_physics_impl(env, data, local, [x, y, width, height], false)
+        run_physics(env, data, local, x, y, width, height, true)
     }
 
     #[cfg(feature = "bench-jni")]
@@ -227,7 +206,7 @@ mod jni_api {
         env: JNIEnv, _class: JClass, data: JFloatArray, local: JIntArray,
         x: jfloat, y: jfloat, width: jfloat, height: jfloat,
     ) -> jboolean {
-        run_physics_impl(env, data, local, [x, y, width, height], true)
+        run_physics(env, data, local, x, y, width, height, false)
     }
 
     macro_rules! jni_physics_entry {
@@ -237,7 +216,7 @@ mod jni_api {
                 env: JNIEnv, _class: JClass, data: JFloatArray, local: JIntArray,
                 x: jfloat, y: jfloat, width: jfloat, height: jfloat,
             ) -> jboolean {
-                run_physics(env, data, local, x, y, width, height)
+                run_physics(env, data, local, x, y, width, height, false)
             }
         };
     }

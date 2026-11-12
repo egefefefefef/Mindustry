@@ -55,3 +55,15 @@ The runs used different shared runners, so compare each candidate only with its
 own baseline. Results do not rule out other algorithms or improvements in
 real workloads. The added randomized parity tests preserve the original v1.1
 kernel as a reference for future experiments.
+
+## Physics JNI buffer experiment
+
+An alternating same-JVM JNI test compared fresh JNI input buffers against
+bounded per-thread buffer reuse on sparse and dense scenes (60 warmups, 120
+samples). The full Rust physics kernel ran in both cases, and Java fixture
+resets were outside the timer. At 4096 dense bodies, fresh versus reused was
+2.6820 versus 2.6492 ms in one run and 3.4264 versus 3.4246 ms in another.
+There was no convincing consistent gain; buffer reuse was rejected. Neither
+test includes main-thread state preparation, scheduling, or rendering.
+Runs: https://github.com/egefefefefef/Mindustry/actions/runs/43175705677 and
+https://github.com/egefefefefef/Mindustry/actions/runs/43176069427.

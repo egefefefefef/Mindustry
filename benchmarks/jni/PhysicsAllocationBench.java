@@ -75,7 +75,7 @@ public class PhysicsAllocationBench{
                 }
                 if(!Arrays.equals(data[0], data[1])) throw new AssertionError("output mismatch " + count);
             }
-            System.out.printf(java.util.Locale.ROOT, "JNI-AB %d %s baseline_ms=%.4f cached_ms=%.4f%n", count, dense ? "dense" : "sparse", total[0] / (samples * 1e6), total[1] / (samples * 1e6));
+            System.out.printf(java.util.Locale.ROOT, "JNI-AB %d %s baseline_ms=%.4f optimized_ms=%.4f%n", count, dense ? "dense" : "sparse", total[0] / (samples * 1e6), total[1] / (samples * 1e6));
         }
     }
 }

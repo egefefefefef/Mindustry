@@ -41,7 +41,7 @@ struct Node {
 }
 
 impl Node {
-    fn build(bounds: Rect, indices: Vec<usize>, bodies: &[Body]) -> Self {
+    fn build(bounds: Rect, mut indices: Vec<usize>, bodies: &[Body]) -> Self {
         if indices.len() <= 5 || bounds.w <= 10.0 || bounds.h <= 10.0 {
             return Self { bounds, objects: indices, children: None };
         }
@@ -50,8 +50,9 @@ impl Node {
         let mid_x = bounds.x + half_w;
         let mid_y = bounds.y + half_h;
         let mut parts: [Vec<usize>; 4] = std::array::from_fn(|_| Vec::new());
-        let mut objects = Vec::new();
-        for i in indices {
+        // Retain straddling objects in the original vector, preserving their order.
+        // Only child partitions require new allocations.
+        indices.retain(|&i| {
             let b = bodies[i].hitbox();
             let top = b.y > mid_y;
             let bottom = b.y < mid_y && b.y + b.h < mid_y;
@@ -64,8 +65,13 @@ impl Node {
                 (_, true, _, true) => Some(1),
                 _ => None,
             };
-            if let Some(child) = child { parts[child].push(i); } else { objects.push(i); }
-        }
+            if let Some(child) = child {
+                parts[child].push(i);
+                false
+            } else {
+                true
+            }
+        });
         let rects = [
             Rect { x: bounds.x, y: bounds.y, w: half_w, h: half_h },
             Rect { x: bounds.x + half_w, y: bounds.y, w: half_w, h: half_h },
@@ -74,7 +80,7 @@ impl Node {
         ];
         let mut parts = parts.into_iter();
         let children = std::array::from_fn(|i| Self::build(rects[i], parts.next().unwrap(), bodies));
-        Self { bounds, objects, children: Some(Box::new(children)) }
+        Self { bounds, objects: indices, children: Some(Box::new(children)) }
     }
 
     fn intersect(&self, area: Rect, bodies: &[Body], out: &mut Vec<usize>) {
