@@ -11,6 +11,8 @@ import arc.struct.*;
 import arc.util.*;
 import arc.util.pooling.*;
 import mindustry.core.*;
+
+import static mindustry.Vars.unitPhysics;
 import mindustry.graphics.*;
 import mindustry.ui.*;
 
@@ -66,6 +68,11 @@ public class PerformanceFragment{
 
                     i.label(() -> counter.name() + ": " + Strings.fixed(counter.valueMs(), 1)).style(Styles.outlineLabel).with(l -> l.setFontScale(fscl)).color(color(counter)).row();
                 }
+
+                // These are counts, not times: each collision layer runs independently.
+                i.add().height(10f).row();
+                i.label(() -> unitPhysics.diagnostics().lastLayers()).style(Styles.outlineLabel).with(l -> l.setFontScale(fscl)).row();
+                i.label(() -> unitPhysics.diagnostics().totals()).style(Styles.outlineLabel).with(l -> l.setFontScale(fscl)).row();
             }).left();
 
             outer.get().toFront();

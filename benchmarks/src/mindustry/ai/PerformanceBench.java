@@ -4,6 +4,7 @@ import arc.math.geom.Rect;
 import arc.struct.IntSeq;
 import mindustry.Vars;
 import mindustry.async.PhysicsProcess.PhysicsWorld;
+import mindustry.async.PhysicsProcess.PhysicsBackend;
 import mindustry.async.PhysicsProcess.PhysicsWorld.PhysicsBody;
 import mindustry.net.Net;
 import mindustry.desktop.NativeFlowfieldJNI;
@@ -132,6 +133,8 @@ public class PerformanceBench{
                     boolean usedNative = worlds[mode].update(mode == 1);
                     long elapsed = System.nanoTime() - start;
                     if(usedNative != (mode == 1)) throw new IllegalStateException("Unexpected physics fallback for " + count);
+                    PhysicsBackend backend = mode == 1 ? PhysicsBackend.rust : PhysicsBackend.javaDisabled;
+                    if(worlds[mode].lastBackend() != backend) throw new IllegalStateException("Wrong physics diagnostic for " + count);
                     if(sample >= 0) timings[mode][sample] = elapsed;
                 }
                 checkPositions(bodies[0], bodies[1], "dense " + count);
@@ -203,6 +206,7 @@ public class PerformanceBench{
             world.add(body);
         }
         if(world.update(true)) throw new IllegalStateException("Stacked bodies should use Java fallback");
+        if(world.lastBackend() != PhysicsBackend.javaFallback) throw new IllegalStateException("Fallback diagnostic was not recorded");
     }
 
     private static void checkPositions(PhysicsBody[] a, PhysicsBody[] b, String context){

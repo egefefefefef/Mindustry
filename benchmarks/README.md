@@ -83,3 +83,15 @@ https://github.com/egefefefefef/Mindustry/actions/runs/43176505662 and
 https://github.com/egefefefefef/Mindustry/actions/runs/43176782301.
 The experimental benchmark code is preserved in commit `02e58de`; it is not
 part of the release build.
+
+## In-game physics diagnostics
+
+The performance overlay reports counts, not times or FPS. `Physics layers`
+shows the most recently completed batch across the four collision layers:
+`Rust` means the native kernel completed, `Java` means native physics was not
+requested, and `fallback` means native physics was requested but Java ran
+instead (e.g. unavailable library, unsupported input or iteration count).
+Empty layers are omitted. `Layer steps` counts the same categories since the
+world was loaded/reset. Several active layers can be counted in a single frame;
+these are not counts of individual units. After pausing, the last completed
+batch remains visible. Counters are collected after the worker tasks finish.
