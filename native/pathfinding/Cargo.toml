@@ -11,6 +11,8 @@ crate-type = ["cdylib", "staticlib"]
 [features]
 default = ["jni"]
 jni = ["dep:jni"]
+# Opt-in benchmark-only JNI entry points, never enabled in release builds.
+bench-jni = ["jni"]
 
 [dependencies]
 jni = { version = "0.21", optional = true }
