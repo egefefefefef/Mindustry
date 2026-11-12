@@ -12,21 +12,17 @@ fn compute(costs: &[i32], width: usize, height: usize, targets: &[i32]) -> Optio
     }
 
     let mut weights = vec![-1i32; len];
-    let mut frontier = VecDeque::new();
-    // A tile already waiting in the queue will use its latest weight when
-    // popped; enqueuing it again only repeats work.
-    let mut queued = vec![false; len];
+    // Typical wavefronts are much wider than the default queue capacity.
+    let mut frontier = VecDeque::with_capacity(width.max(height).min(1024));
     for &target in targets {
         let pos = usize::try_from(target).ok()?;
         if pos < len && weights[pos] != 0 {
             weights[pos] = 0;
             frontier.push_front(pos);
-            queued[pos] = true;
         }
     }
 
     while let Some(pos) = frontier.pop_back() {
-        queued[pos] = false;
         let base = weights[pos];
         if base < 0 {
             continue;
@@ -44,10 +40,7 @@ fn compute(costs: &[i32], width: usize, height: usize, targets: &[i32]) -> Optio
             let candidate = base.saturating_add(step);
             if weights[next] < 0 || weights[next] > candidate {
                 weights[next] = candidate;
-                if !queued[next] {
-                    frontier.push_front(next);
-                    queued[next] = true;
-                }
+                frontier.push_front(next);
             }
         };
 
@@ -279,7 +272,7 @@ mod optimization_tests {
     }
 
     #[test]
-    fn queued_kernel_matches_v1_1_across_varied_fields() {
+    fn optimized_kernel_matches_v1_1_across_varied_fields() {
         for width in [1, 2, 3, 8, 17, 64] {
             for height in [1, 2, 5, 16, 37] {
                 for seed in 0..20 {
@@ -297,7 +290,7 @@ mod optimization_tests {
 
     #[test]
     #[ignore = "manual same-process kernel benchmark"]
-    fn compare_queued_kernel() {
+    fn compare_optimized_kernel() {
         use std::hint::black_box;
         use std::time::Instant;
         for size in [64, 128, 256] {
