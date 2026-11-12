@@ -46,6 +46,7 @@ class DeveloperPanelTests{
         assertEquals(DevTestTools.Result.unavailable, tools.spawn(UnitTypes.dagger, Team.sharded, 10, 10, 1));
         assertEquals(DevTestTools.Result.unavailable, tools.clear());
         assertEquals(DevTestTools.Result.unavailable, tools.nextWave());
+        assertEquals(DevTestTools.Result.unavailable, tools.setUnitCapDisabled(true));
         state.rules.editor = false;
         var active = net.getClass().getDeclaredField("active");
         active.setAccessible(true);
@@ -54,9 +55,20 @@ class DeveloperPanelTests{
             assertEquals(DevTestTools.Result.unavailable, tools.spawn(UnitTypes.dagger, Team.sharded, 10, 10, 1));
             assertEquals(DevTestTools.Result.unavailable, tools.clear());
             assertEquals(DevTestTools.Result.unavailable, tools.nextWave());
+            assertEquals(DevTestTools.Result.unavailable, tools.setUnitCapDisabled(true));
         }finally{
             active.setBoolean(net, false);
         }
+    }
+
+    @Test
+    void unitCapChangesOnlyAfterExplicitAction(){
+        DevTestTools tools = new DevTestTools();
+        state.rules.disableUnitCap = false;
+        assertEquals(DevTestTools.Result.ok, tools.setUnitCapDisabled(true));
+        assertTrue(state.rules.disableUnitCap);
+        assertEquals(DevTestTools.Result.ok, tools.setUnitCapDisabled(false));
+        assertFalse(state.rules.disableUnitCap);
     }
 
     @Test

@@ -53,6 +53,14 @@ public class DeveloperPanel extends BaseDialog{
                 ui.showConfirm("@devpanel.clearconfirm", () -> showResult(tools.clear()));
             }).width(440f).height(55f).row();
             t.label(() -> Core.bundle.format("devpanel.tracked", tools.trackedCount())).row();
+            t.button("@devpanel.cap", Icon.settings, () -> {
+                if(!tools.available()) { ui.showInfo("@devpanel.unavailable"); return; }
+                boolean disable = !state.rules.disableUnitCap;
+                ui.showConfirm(disable ? "@devpanel.capdisableconfirm" : "@devpanel.capenableconfirm", () -> {
+                    showResult(tools.setUnitCapDisabled(disable));
+                });
+            }).width(440f).height(55f).row();
+            t.label(() -> Core.bundle.get(state.isGame() && state.rules.disableUnitCap ? "devpanel.capoff" : "devpanel.capon")).row();
             t.button("@devpanel.wave", Icon.right, () -> {
                 if(!tools.available()) { ui.showInfo("@devpanel.unavailable"); return; }
                 ui.showConfirm("@devpanel.waveconfirm", () -> showResult(tools.nextWave()));

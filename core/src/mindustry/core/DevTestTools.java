@@ -77,6 +77,13 @@ public class DevTestTools{
         return Result.ok;
     }
 
+    /** Explicit opt-in: changes the current world's rules and can be saved. */
+    public Result setUnitCapDisabled(boolean disabled){
+        if(!available()) return Result.unavailable;
+        state.rules.disableUnitCap = disabled;
+        return Result.ok;
+    }
+
     public Result nextWave(){
         if(!available()) return Result.unavailable;
         if(!state.rules.waves || logic == null || spawner == null) return Result.invalid;

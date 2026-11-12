@@ -467,7 +467,7 @@ jobs:
     - uses: gradle/actions/setup-gradle@v6
     - name: Build preview JAR
       shell: bash
-      run: ./gradlew desktop:dist -Pbuildversion=1.1 -PdistributionVersion=1.1-physics-preview -PnativePhysicsDefault=true --stacktrace
+      run: ./gradlew desktop:dist -Pbuildversion=1.1 -PdistributionVersion=1.1-dev-panel-preview -PnativePhysicsDefault=true --stacktrace
     - name: Package preview with Java
       shell: pwsh
       run: |
@@ -481,12 +481,12 @@ jobs:
       shell: bash
       env:
         PLATFORM: windows
-        EXPECTED_DISTRIBUTION_VERSION: 1.1-physics-preview
+        EXPECTED_DISTRIBUTION_VERSION: 1.1-dev-panel-preview
       run: python3 packaging/verify_native_physics.py
     - name: Upload preview (not a release)
       uses: actions/upload-artifact@v7
       with:
-        name: Mindustry-physics-diagnostics-preview-Windows-x64
+        name: Mindustry-developer-panel-preview-Windows-x64
         path: build/package/Mindustry/
         if-no-files-found: error
         retention-days: 14
