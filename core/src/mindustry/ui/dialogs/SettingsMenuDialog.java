@@ -42,6 +42,7 @@ public class SettingsMenuDialog extends BaseDialog{
     private Table menu;
     private BaseDialog dataDialog;
     private BaseDialog planetDataDialog;
+    private DeveloperPanel developerPanel;
     private Planet planet = Planets.serpulo;
     private Seq<SettingsCategory> categories = new Seq<>();
 
@@ -570,6 +571,15 @@ public class SettingsMenuDialog extends BaseDialog{
         });
         dev.checkPref("drawhitboxes", false);
         dev.checkPref("showperformance", false);
+        dev.pref(new SettingsTable.Setting("devpanel"){
+            @Override
+            public void add(SettingsTable table){
+                table.button("@devpanel.title", Icon.fileCode, Styles.flatt, () -> {
+                    if(developerPanel == null) developerPanel = new DeveloperPanel();
+                    developerPanel.show();
+                }).width(300f).height(55f).pad(6f).left().row();
+            }
+        });
 
         if(!ios){
             dev.checkPref("modcrashdisable", true);
