@@ -12,8 +12,7 @@ fn compute(costs: &[i32], width: usize, height: usize, targets: &[i32]) -> Optio
     }
 
     let mut weights = vec![-1i32; len];
-    // Typical wavefronts are much wider than the default queue capacity.
-    let mut frontier = VecDeque::with_capacity(width.max(height).min(1024));
+    let mut frontier = VecDeque::new();
     for &target in targets {
         let pos = usize::try_from(target).ok()?;
         if pos < len && weights[pos] != 0 {
@@ -226,7 +225,7 @@ mod tests {
 }
 
 #[cfg(test)]
-mod optimization_tests {
+mod baseline_parity_tests {
     use super::compute;
     use std::collections::VecDeque;
 
@@ -272,7 +271,7 @@ mod optimization_tests {
     }
 
     #[test]
-    fn optimized_kernel_matches_v1_1_across_varied_fields() {
+    fn matches_v1_1_across_varied_fields() {
         for width in [1, 2, 3, 8, 17, 64] {
             for height in [1, 2, 5, 16, 37] {
                 for seed in 0..20 {
@@ -288,29 +287,4 @@ mod optimization_tests {
         }
     }
 
-    #[test]
-    #[ignore = "manual same-process kernel benchmark"]
-    fn compare_optimized_kernel() {
-        use std::hint::black_box;
-        use std::time::Instant;
-        for size in [64, 128, 256] {
-            for uniform in [true, false] {
-                let costs = grid(size, size, 781259 + size as u64, uniform);
-                let targets = [(size * size / 2 + size / 2) as i32];
-                assert_eq!(baseline(&costs, size, size, &targets), compute(&costs, size, size, &targets));
-                let mut totals = [0u128; 2];
-                for sample in 0..64 {
-                    for k in 0..2 {
-                        let mode = (sample + k) % 2;
-                        let start = Instant::now();
-                        let result = if mode == 0 { baseline(black_box(&costs), size, size, &targets) } else { compute(black_box(&costs), size, size, &targets) };
-                        black_box(result);
-                        let elapsed = start.elapsed().as_nanos();
-                        if sample >= 16 { totals[mode] += elapsed; }
-                    }
-                }
-                println!("AB {} {} baseline_ms={:.4} candidate_ms={:.4}", size, if uniform {"uniform"} else {"weighted"}, totals[0] as f64 / 48e6, totals[1] as f64 / 48e6);
-            }
-        }
-    }
 }

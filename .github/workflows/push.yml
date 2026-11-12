@@ -42,10 +42,7 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
     - name: Test and build native pathfinder
       run: |
-        set -o pipefail
         cargo test --manifest-path native/pathfinding/Cargo.toml
-        cargo test --manifest-path native/pathfinding/Cargo.toml --release compare_optimized_kernel -- --ignored --nocapture | tee native-ab.txt
-        python3 -c 'import pathlib; rows=[l for l in pathlib.Path("native-ab.txt").read_text().splitlines() if l.startswith("AB ")]; print("::notice::"+"%0A".join(rows))'
         cargo build --manifest-path native/pathfinding/Cargo.toml --release
         mkdir -p desktop/src/main/resources/native/linux-x86_64
         cp native/pathfinding/target/release/libmindustry_pathfinding.so desktop/src/main/resources/native/linux-x86_64/

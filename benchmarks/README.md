@@ -37,3 +37,21 @@ non-local bodies, a 120-step sequence, and the stacked-body fallback. It then al
 implementations on identical dense scenes; Rust timings include Java packing,
 JNI copies, and output application. These checks do not prove determinism over
 long games or mixed-platform network sessions.
+
+## Flowfield optimization experiments
+
+On the same GitHub runner, release-mode Rust-only tests alternated the v1.1
+kernel and experimental candidates (16 warmups and 48 samples per case).
+These timings exclude JNI and Java preparation; they are not frame times.
+
+* Queue deduplication reduced duplicate work but was slower in the tested
+  grids, including 256x256 weighted grids: 3.5934 ms baseline versus 4.4212 ms
+  candidate. The change was rejected. Run: https://github.com/egefefefefef/Mindustry/actions/runs/43173434247
+* Preallocating the queue did not show a consistent improvement: 256x256
+  weighted grids were 3.2325 ms baseline versus 3.2695 ms candidate. The
+  change was rejected. Run: https://github.com/egefefefefef/Mindustry/actions/runs/43173870820
+
+The runs used different shared runners, so compare each candidate only with its
+own baseline. Results do not rule out other algorithms or improvements in
+real workloads. The added randomized parity tests preserve the original v1.1
+kernel as a reference for future experiments.
