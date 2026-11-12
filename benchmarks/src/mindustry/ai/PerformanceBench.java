@@ -165,6 +165,28 @@ public class PerformanceBench{
             if(!nativeWorld.update(true)) throw new IllegalStateException("Unexpected Rust fallback in parity case " + trial);
             checkPositions(javaBodies, nativeBodies, "random " + trial);
         }
+        // Check multiple consecutive updates without resetting positions. Single-step
+        // agreement alone cannot detect accumulated divergence.
+        PhysicsWorld javaWorld = new PhysicsWorld(new Rect(0, 0, 1024, 1024));
+        PhysicsWorld nativeWorld = new PhysicsWorld(new Rect(0, 0, 1024, 1024));
+        PhysicsBody[] javaBodies = new PhysicsBody[256], nativeBodies = new PhysicsBody[256];
+        for(int i = 0; i < javaBodies.length; i++){
+            PhysicsBody a = javaBodies[i] = new PhysicsBody();
+            PhysicsBody b = nativeBodies[i] = new PhysicsBody();
+            a.x = b.x = 20 + (i % 16) * 5.5f;
+            a.y = b.y = 20 + (i / 16) * 5.5f;
+            a.radius = b.radius = 3f;
+            a.mass = b.mass = 1f + (i % 4) * 0.25f;
+            a.local = b.local = i % 4 != 0;
+            javaWorld.add(a);
+            nativeWorld.add(b);
+        }
+        for(int tick = 0; tick < 120; tick++){
+            javaWorld.update(false);
+            if(!nativeWorld.update(true)) throw new IllegalStateException("Unexpected Rust fallback in multi-step case " + tick);
+            checkPositions(javaBodies, nativeBodies, "multi-step " + tick);
+        }
+
         // Exact overlap uses Java's random-angle rule: native must decline without
         // altering its input, and the production wrapper must fall back safely.
         float[] stacked = {5, 5, 2, 1, 5, 5, 2, 1};

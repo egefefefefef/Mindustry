@@ -70,11 +70,8 @@ jobs:
           cat build/performance/results.md
         } > build/performance/summary.md
         cat build/performance/summary.md >> "$GITHUB_STEP_SUMMARY"
-        while IFS= read -r line; do
-          if [[ "$line" == '| weighted'* || "$line" == '| physics'* ]]; then
-            echo "::notice::$line"
-          fi
-        done < build/performance/results.md
+        # A single annotation avoids GitHub's per-step annotation limit.
+        python3 -c 'import pathlib; rows=[l for l in pathlib.Path("build/performance/results.md").read_text().splitlines() if l.startswith("| weighted") or l.startswith("| physics")]; print("::notice::"+("\n".join(rows)).replace("%","%25").replace("\r","%0D").replace("\n","%0A"))'
     - name: Upload benchmark results
       if: ${{ always() }}
       uses: actions/upload-artifact@v7

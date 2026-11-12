@@ -34,7 +34,7 @@ successful step. Invalid inputs or exactly stacked bodies fall back to the
 original Java step (including its random-angle behavior).
 
 The benchmark checks Java versus Rust positions for varied synthetic scenes,
-non-local bodies, and the stacked-body fallback. It then alternates both
+non-local bodies, a 120-step sequence, and the stacked-body fallback. It then alternates both
 implementations on identical dense scenes; Rust timings include Java packing,
 JNI copies, and output application. These checks do not prove determinism over
 long games or mixed-platform network sessions.
