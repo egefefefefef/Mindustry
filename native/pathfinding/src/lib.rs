@@ -1,3 +1,5 @@
+mod physics;
+
 use std::collections::VecDeque;
 
 /// Computes the weighted four-way flow field used by Mindustry's enemy pathfinder.
@@ -105,8 +107,8 @@ pub unsafe extern "C" fn mindustry_flowfield_compute(
 #[cfg(feature = "jni")]
 mod jni_api {
     use super::compute;
-    use jni::objects::{JClass, JIntArray};
-    use jni::sys::{jint, jintArray};
+    use jni::objects::{JClass, JFloatArray, JIntArray};
+    use jni::sys::{jboolean, jfloat, jint, jintArray, JNI_FALSE, JNI_TRUE};
     use jni::JNIEnv;
     use std::ptr;
 
@@ -157,6 +159,42 @@ mod jni_api {
 
     jni_entry!(Java_mindustry_desktop_NativeFlowfieldJNI_computeNative);
     jni_entry!(Java_mindustry_android_NativeFlowfieldJNI_computeNative);
+
+    fn run_physics(
+        env: JNIEnv,
+        data: JFloatArray,
+        local: JIntArray,
+        x: jfloat, y: jfloat, width: jfloat, height: jfloat,
+    ) -> jboolean {
+        let result = (|| {
+            let data_len = env.get_array_length(&data).ok()? as usize;
+            let local_len = env.get_array_length(&local).ok()? as usize;
+            if local_len.checked_mul(4)? != data_len { return None; }
+            let mut values = vec![0.0; data_len];
+            let mut flags = vec![0; local_len];
+            env.get_float_array_region(&data, 0, &mut values).ok()?;
+            env.get_int_array_region(&local, 0, &mut flags).ok()?;
+            if !super::physics::update(&mut values, &flags, [x, y, width, height]) { return None; }
+            env.set_float_array_region(&data, 0, &values).ok()?;
+            Some(())
+        })();
+        if result.is_some() { JNI_TRUE } else { JNI_FALSE }
+    }
+
+    macro_rules! jni_physics_entry {
+        ($name:ident) => {
+            #[no_mangle]
+            pub extern "system" fn $name(
+                env: JNIEnv, _class: JClass, data: JFloatArray, local: JIntArray,
+                x: jfloat, y: jfloat, width: jfloat, height: jfloat,
+            ) -> jboolean {
+                run_physics(env, data, local, x, y, width, height)
+            }
+        };
+    }
+
+    jni_physics_entry!(Java_mindustry_desktop_NativeFlowfieldJNI_physicsNative);
+    jni_physics_entry!(Java_mindustry_android_NativeFlowfieldJNI_physicsNative);
 }
 
 #[cfg(test)]

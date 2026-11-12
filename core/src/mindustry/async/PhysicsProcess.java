@@ -170,6 +170,7 @@ public class PhysicsProcess implements AsyncProcess{
         private final Seq<PhysicsBody> seq = new Seq<>(PhysicsBody.class);
         private final Vec2 vec = new Vec2();
         private final Rand rand = new Rand();
+        private final NativePhysics nativePhysics = new NativePhysics();
 
         public PhysicsWorld(Rect bounds){
             tree = new QuadTree<>(new Rect(bounds));
@@ -184,12 +185,24 @@ public class PhysicsProcess implements AsyncProcess{
         }
 
         public void update(){
+            update(Boolean.getBoolean("mindustry.experimentalNativePhysics"));
+        }
+
+        /** Runs one step and reports whether the experimental native kernel was used. */
+        public boolean update(boolean preferNative){
             long begin = Time.nanos();
 
             var bodyItems = bodies.items;
             int bodySize = bodies.size;
 
             int iterations = Vars.net.client() || OS.isMobile ? mobileIterations : desktopIterations;
+
+            // Each PhysicsWorld has independent buffers; a failed native call leaves
+            // Java bodies untouched and falls back to the original implementation.
+            if(preferNative && iterations == 1 && bodySize > 0 && nativePhysics.update(bodyItems, bodySize, tree.bounds)){
+                maxPhysicsTime = Math.max(maxPhysicsTime, Time.timeSinceNanos(begin));
+                return true;
+            }
 
             for(int iter = 0; iter < iterations; iter++){
                 tree.fill(bodies);
@@ -248,6 +261,7 @@ public class PhysicsProcess implements AsyncProcess{
             }
 
             maxPhysicsTime = Math.max(maxPhysicsTime, Time.timeSinceNanos(begin));
+            return false;
         }
 
         public static class PhysicsBody implements QuadTreeObject{

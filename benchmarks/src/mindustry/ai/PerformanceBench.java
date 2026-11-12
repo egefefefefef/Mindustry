@@ -6,6 +6,7 @@ import mindustry.Vars;
 import mindustry.async.PhysicsProcess.PhysicsWorld;
 import mindustry.async.PhysicsProcess.PhysicsWorld.PhysicsBody;
 import mindustry.net.Net;
+import mindustry.desktop.NativeFlowfieldJNI;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -45,7 +46,9 @@ public class PerformanceBench{
             "Outputs are checked for equality; this does not test every game pathfinding scenario or ControlPathfinder.\n\n" +
             "Physics: actual PhysicsWorld.update, one collision layer with local bodies in a dense grid. " +
             "Body-position reset is outside the timer. This does not include game state, other layers, rendering, " +
-            "thread scheduling or the main-thread synchronization costs. No Rust physics implementation is measured.\n\n" + table;
+            "thread scheduling or the main-thread synchronization costs. Rust includes packing, JNI and copying. " +
+            "Java/Rust body positions are checked within 0.001 world units; unsupported stacked bodies fall back to Java. " +
+            "Rust physics is experimental and disabled by default.\n\n" + table;
         Files.writeString(output.resolve("results.csv"), csv, StandardCharsets.UTF_8);
         Files.writeString(output.resolve("results.md"), notes, StandardCharsets.UTF_8);
         System.out.println(notes);
@@ -101,33 +104,90 @@ public class PerformanceBench{
     }
 
     private static void benchmarkPhysics(){
+        validatePhysics();
         for(int count : new int[]{256, 1024, 4096}){
             int columns = (int)Math.ceil(Math.sqrt(count));
-            PhysicsWorld world = new PhysicsWorld(new Rect(0, 0, 1024, 1024));
-            PhysicsBody[] bodies = new PhysicsBody[count];
-            for(int i = 0; i < count; i++){
-                PhysicsBody body = bodies[i] = new PhysicsBody();
-                body.radius = 3f;
-                body.mass = 1f + (i % 4) * 0.25f;
-                body.local = true;
-                world.add(body);
-            }
-            long[] timings = new long[samples];
-            for(int sample = -warmups; sample < samples; sample++){
+            PhysicsWorld[] worlds = {new PhysicsWorld(new Rect(0, 0, 1024, 1024)), new PhysicsWorld(new Rect(0, 0, 1024, 1024))};
+            PhysicsBody[][] bodies = {new PhysicsBody[count], new PhysicsBody[count]};
+            for(int mode = 0; mode < 2; mode++){
                 for(int i = 0; i < count; i++){
-                    bodies[i].x = 20 + (i % columns) * 5.5f;
-                    bodies[i].y = 20 + (i / columns) * 5.5f;
+                    PhysicsBody body = bodies[mode][i] = new PhysicsBody();
+                    body.radius = 3f;
+                    body.mass = 1f + (i % 4) * 0.25f;
+                    body.local = true;
+                    worlds[mode].add(body);
                 }
-                long start = System.nanoTime();
-                world.update();
-                long elapsed = System.nanoTime() - start;
-                if(!Float.isFinite(bodies[count - 1].x) || !Float.isFinite(bodies[count - 1].y)){
-                    throw new IllegalStateException("Non-finite physics result");
-                }
-                sink += Float.floatToIntBits(bodies[count - 1].x);
-                if(sample >= 0) timings[sample] = elapsed;
             }
-            record("physics, one dense layer", "Java", count, timings);
+            long[][] timings = {new long[samples], new long[samples]};
+            for(int sample = -warmups; sample < samples; sample++){
+                for(int mode = 0; mode < 2; mode++){
+                    for(int i = 0; i < count; i++){
+                        bodies[mode][i].x = 20 + (i % columns) * 5.5f;
+                        bodies[mode][i].y = 20 + (i / columns) * 5.5f;
+                    }
+                }
+                for(int k = 0; k < 2; k++){
+                    int mode = (sample + k) & 1;
+                    long start = System.nanoTime();
+                    boolean usedNative = worlds[mode].update(mode == 1);
+                    long elapsed = System.nanoTime() - start;
+                    if(usedNative != (mode == 1)) throw new IllegalStateException("Unexpected physics fallback for " + count);
+                    if(sample >= 0) timings[mode][sample] = elapsed;
+                }
+                checkPositions(bodies[0], bodies[1], "dense " + count);
+                sink += Float.floatToIntBits(bodies[1][count - 1].x);
+            }
+            record("physics, one dense layer", "Java", count, timings[0]);
+            record("physics, one dense layer", "Rust + JNI", count, timings[1]);
+        }
+    }
+
+    private static void validatePhysics(){
+        // Exercise changing radii, masses, non-local bodies, boundaries and empty regions.
+        Random random = new Random(seed);
+        for(int trial = 0; trial < 40; trial++){
+            int count = 20 + random.nextInt(180);
+            PhysicsWorld javaWorld = new PhysicsWorld(new Rect(-50, -40, 200, 180));
+            PhysicsWorld nativeWorld = new PhysicsWorld(new Rect(-50, -40, 200, 180));
+            PhysicsBody[] javaBodies = new PhysicsBody[count], nativeBodies = new PhysicsBody[count];
+            for(int i = 0; i < count; i++){
+                PhysicsBody a = javaBodies[i] = new PhysicsBody();
+                PhysicsBody b = nativeBodies[i] = new PhysicsBody();
+                a.x = b.x = -49 + random.nextFloat() * 198;
+                a.y = b.y = -39 + random.nextFloat() * 178;
+                a.radius = b.radius = 1f + random.nextFloat() * 8f;
+                a.mass = b.mass = 0.5f + random.nextFloat() * 4f;
+                a.local = b.local = random.nextInt(4) != 0;
+                javaWorld.add(a);
+                nativeWorld.add(b);
+            }
+            javaWorld.update(false);
+            if(!nativeWorld.update(true)) throw new IllegalStateException("Unexpected Rust fallback in parity case " + trial);
+            checkPositions(javaBodies, nativeBodies, "random " + trial);
+        }
+        // Exact overlap uses Java's random-angle rule: native must decline without
+        // altering its input, and the production wrapper must fall back safely.
+        float[] stacked = {5, 5, 2, 1, 5, 5, 2, 1};
+        float[] saved = stacked.clone();
+        if(NativeFlowfieldJNI.computePhysics(stacked, new int[]{1, 1}, 0, 0, 100, 100) || !Arrays.equals(stacked, saved)){
+            throw new IllegalStateException("Stacked-body native fallback modified input");
+        }
+        PhysicsWorld world = new PhysicsWorld(new Rect(0, 0, 100, 100));
+        for(int i = 0; i < 2; i++){
+            PhysicsBody body = new PhysicsBody();
+            body.x = body.y = 5f;
+            body.radius = 2f;
+            body.mass = 1f;
+            world.add(body);
+        }
+        if(world.update(true)) throw new IllegalStateException("Stacked bodies should use Java fallback");
+    }
+
+    private static void checkPositions(PhysicsBody[] a, PhysicsBody[] b, String context){
+        for(int i = 0; i < a.length; i++){
+            if(!Float.isFinite(b[i].x) || !Float.isFinite(b[i].y) || Math.abs(a[i].x - b[i].x) > 0.001f || Math.abs(a[i].y - b[i].y) > 0.001f){
+                throw new IllegalStateException("Physics mismatch " + context + " body " + i + ": Java=" + a[i].x + "," + a[i].y + " Rust=" + b[i].x + "," + b[i].y);
+            }
         }
     }
 
