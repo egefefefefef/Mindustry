@@ -139,6 +139,8 @@ allprojects{
                 props["number"] = versionNumber
                 props["modifier"] = versionModifier
                 props["build"] = buildid
+                // Release builds can opt in without changing defaults for normal builds.
+                props["nativePhysicsDefault"] = (project.findProperty("nativePhysicsDefault")?.toString()?.toBoolean() ?: false).toString()
                 if(project.hasProperty("distributionVersion")){
                     props["distributionVersion"] = project.property("distributionVersion").toString()
                 }else{

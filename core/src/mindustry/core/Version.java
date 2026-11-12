@@ -18,6 +18,8 @@ public class Version{
     public static String buildDate = "unknown";
     /** Version of this distribution, if set by the build. */
     public static String distributionVersion = "";
+    /** Whether this distribution opts into the experimental native physics by default. */
+    public static boolean nativePhysicsDefault = false;
     /** Number specifying the major version, e.g. '4' */
     public static int number;
     /** Build number, e.g. '43'. set to '-1' for custom builds. */
@@ -43,6 +45,7 @@ public class Version{
         commitHash = map.get("commitHash", "unknown");
         buildDate = map.get("buildDate", "unknown");
         distributionVersion = map.get("distributionVersion", "");
+        nativePhysicsDefault = Boolean.parseBoolean(map.get("nativePhysicsDefault", "false"));
         isSteam = modifier.contains("steam");
         if(map.get("build").contains(".")){
             String[] split = map.get("build").split("\\.");

@@ -185,7 +185,8 @@ public class PhysicsProcess implements AsyncProcess{
         }
 
         public void update(){
-            update(Boolean.getBoolean("mindustry.experimentalNativePhysics"));
+            String override = System.getProperty("mindustry.experimentalNativePhysics");
+            update(override == null ? Version.nativePhysicsDefault : Boolean.parseBoolean(override));
         }
 
         /** Runs one step and reports whether the experimental native kernel was used. */
