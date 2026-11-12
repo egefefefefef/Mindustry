@@ -67,3 +67,19 @@ There was no convincing consistent gain; buffer reuse was rejected. Neither
 test includes main-thread state preparation, scheduling, or rendering.
 Runs: https://github.com/egefefefefef/Mindustry/actions/runs/43175705677 and
 https://github.com/egefefefefef/Mindustry/actions/runs/43176069427.
+
+## Physics quadtree allocation experiment
+
+A second same-JVM JNI A/B experiment reused the input index vector for
+straddling quadtree objects instead of allocating a new vector, preserving
+their order. At 4096 dense bodies the reference and candidate measured
+2.7301 vs 2.6545 ms in one run, but 2.2360 vs 2.2829 ms in another. Because
+this small difference changed direction, the candidate was rejected. This is
+not a measurement of full-frame performance. The benchmark also checked
+exact baseline/candidate output for the measured scenes, varying input sizes,
+stacked and invalid inputs, and concurrent calls. The regular Java/Rust
+physics parity and multi-step tests passed as well. Runs:
+https://github.com/egefefefefef/Mindustry/actions/runs/43176505662 and
+https://github.com/egefefefefef/Mindustry/actions/runs/43176782301.
+The experimental benchmark code is preserved in commit `02e58de`; it is not
+part of the release build.

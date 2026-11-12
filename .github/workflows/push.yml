@@ -42,14 +42,7 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
     - name: Test and build native pathfinder
       run: |
-        set -o pipefail
         cargo test --manifest-path native/pathfinding/Cargo.toml
-        cargo build --manifest-path native/pathfinding/Cargo.toml --release --features bench-jni
-        mkdir -p build/performance/jni-classes
-        javac -d build/performance/jni-classes benchmarks/jni/PhysicsAllocationBench.java
-        java -cp build/performance/jni-classes PhysicsAllocationBench "$PWD/native/pathfinding/target/release/libmindustry_pathfinding.so" | tee build/performance/jni-allocation-ab.txt
-        python3 -c 'import pathlib; rows=[l for l in pathlib.Path("build/performance/jni-allocation-ab.txt").read_text().splitlines() if l.startswith("JNI-AB ")]; print("::notice::"+"%0A".join(rows))'
-        # Restore a normal library with no benchmark entry points for the game benchmark.
         cargo build --manifest-path native/pathfinding/Cargo.toml --release
         mkdir -p desktop/src/main/resources/native/linux-x86_64
         cp native/pathfinding/target/release/libmindustry_pathfinding.so desktop/src/main/resources/native/linux-x86_64/
