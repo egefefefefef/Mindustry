@@ -402,6 +402,11 @@ public class SettingsMenuDialog extends BaseDialog{
             }
         });
 
+        game.checkPref("campaignweathercycle", false, value -> {
+            if(state != null && state.isCampaign() && net != null && !net.active()){
+                state.rules.weatherCycle = value;
+            }
+        });
         game.checkPref("savecreate", true);
         game.checkPref("blockreplace", true);
         game.checkPref("conveyorpathfinding", true);

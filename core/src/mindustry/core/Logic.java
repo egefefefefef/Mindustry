@@ -87,6 +87,14 @@ public class Logic implements ApplicationListener{
             }
         });
 
+        // Campaign weather is a local preference; apply it to the current sector
+        // on both new games and save loads. Never change rules on a network client.
+        Events.on(RulesLoadEvent.class, e -> {
+            if(!headless && net != null && !net.active() && e.rules.sector != null && Core.settings != null){
+                e.rules.weatherCycle = Core.settings.getBool("campaignweathercycle", false);
+            }
+        });
+
         Events.on(PlayEvent.class, e -> {
             //reset weather on play
             var randomWeather = state.rules.weather.copy().shuffle();
@@ -374,6 +382,10 @@ public class Logic implements ApplicationListener{
     }
 
     protected void updateWeather(){
+        if(WeatherCycle.enabled()){
+            WeatherCycle.update();
+            return;
+        }
         state.rules.weather.removeAll(w -> w.weather == null);
 
         for(WeatherEntry entry : state.rules.weather){

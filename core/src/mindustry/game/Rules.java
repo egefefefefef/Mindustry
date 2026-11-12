@@ -183,6 +183,8 @@ public class Rules{
     public Seq<ItemStack> loadout = ItemStack.list(Items.copper, 100);
     /** Weather events that occur here. */
     public Seq<WeatherEntry> weather = new Seq<>(1);
+    /** Opt-in local weather and visual day/night cycle. Saved with world rules. */
+    public boolean weatherCycle = false;
     /** Block placement limits by type. */
     public ObjectIntMap<Block> blockLimits = new ObjectIntMap<>();
     /** Blocks that cannot be placed. */
