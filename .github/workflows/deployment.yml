@@ -152,7 +152,10 @@ jobs:
       if: startsWith(matrix.platform, 'macos')
       shell: bash
       run: |
-        jpackage --type app-image --input desktop/build/libs --main-jar Mindustry.jar --main-class mindustry.desktop.DesktopLauncher --name Mindustry --app-version 1.1 --java-options '-XstartOnFirstThread' --dest build/package
+        # jpackage's default jlink options strip native commands, including java.
+        # Supply an explicit runtime so the packaged JRE can be smoke-tested too.
+        jlink --add-modules ALL-MODULE-PATH --strip-debug --no-man-pages --no-header-files --compress=2 --output build/macos-jre
+        jpackage --type app-image --runtime-image build/macos-jre --input desktop/build/libs --main-jar Mindustry.jar --main-class mindustry.desktop.DesktopLauncher --name Mindustry --app-version 1.1 --java-options '-XstartOnFirstThread' --dest build/package
         test -x build/package/Mindustry.app/Contents/MacOS/Mindustry
         /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Mindustry.app/Contents/Info.plist | grep -Fx 1.1
         ditto -c -k --sequesterRsrc --keepParent build/package/Mindustry.app "build/${{ matrix.platform }}.zip"
