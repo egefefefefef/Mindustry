@@ -84,3 +84,21 @@ Post feature requests and feedback [here](https://github.com/Anuken/Mindustry-Su
 
 | [![](https://static.itch.io/images/badge.svg)](https://anuke.itch.io/mindustry)    |    [![](https://play.google.com/intl/en_us/badges/images/generic/en-play-badge.png)](https://play.google.com/store/apps/details?id=io.anuke.mindustry)   |    [![](https://fdroid.gitlab.io/artwork/badge/get-it-on.png)](https://f-droid.org/packages/io.anuke.mindustry)	| [![](https://flathub.org/assets/badges/flathub-badge-en.svg)](https://flathub.org/apps/details/com.github.Anuken.Mindustry)  
 |---	|---	|---	|---	|
+
+### Optional local weather cycle
+
+For a custom map, open **Customize** before starting and enable **Automatic
+weather and day/night** under Environment. For a campaign sector, enable
+**Automatic weather and day/night in campaign** in Game settings. Both are off
+by default and operate only in local single-player; multiplayer and the editor
+use the normal weather system.
+
+Clear weather, rain, fog and snow each last three minutes of active game time.
+Visual daylight and darkness follow a twelve-minute cycle. Rain and snow use
+existing weather effects and can therefore affect units and environmental
+attributes. The added puddles and snow cover are temporary visual overlays:
+they do not replace terrain or add physical liquid. Normal map weather
+scheduling is paused while the cycle is active; weather already present can
+continue until it expires. Turning off weather graphics hides these overlays,
+and disabling lighting hides the visual night. Back up important saves before
+using experimental features.

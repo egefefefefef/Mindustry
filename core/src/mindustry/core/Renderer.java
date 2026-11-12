@@ -14,6 +14,7 @@ import arc.struct.*;
 import arc.util.*;
 import mindustry.*;
 import mindustry.game.EventType.*;
+import mindustry.game.WeatherCycle;
 import mindustry.gen.*;
 import mindustry.graphics.*;
 import mindustry.graphics.g3d.*;
@@ -335,7 +336,9 @@ public class Renderer implements ApplicationListener{
 
         Draw.draw(Layer.background, this::drawBackground);
         Draw.draw(Layer.floor, blocks.floor::drawFloor);
-        Draw.draw(Layer.floor + 0.1f, weatherGround::draw);
+        if(WeatherCycle.enabled() && drawWeather && settings.getBool("showweather", true)){
+            Draw.draw(Layer.floor + 0.1f, weatherGround::draw);
+        }
         Draw.draw(Layer.block - 1, blocks::drawShadows);
         Draw.draw(Layer.block - 0.09f, () -> {
             blocks.floor.beginDraw();

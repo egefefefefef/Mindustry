@@ -12,7 +12,7 @@ on:
         type: boolean
         default: false
       diagnostics_preview:
-        description: Build only a separate Windows physics diagnostics preview (never publishes a release)
+        description: Build only a separate Windows development preview (never publishes a release)
         type: boolean
         default: false
 
@@ -475,7 +475,7 @@ jobs:
     - uses: gradle/actions/setup-gradle@v6
     - name: Build preview JAR
       shell: bash
-      run: ./gradlew desktop:dist -Pbuildversion=1.2 -PdistributionVersion=1.2-dev-panel-preview -PnativePhysicsDefault=true --stacktrace
+      run: ./gradlew desktop:dist -Pbuildversion=1.2 -PdistributionVersion=1.2-weather-preview -PnativePhysicsDefault=true --stacktrace
     - name: Package preview with Java
       shell: pwsh
       run: |
@@ -489,12 +489,12 @@ jobs:
       shell: bash
       env:
         PLATFORM: windows
-        EXPECTED_DISTRIBUTION_VERSION: 1.2-dev-panel-preview
+        EXPECTED_DISTRIBUTION_VERSION: 1.2-weather-preview
       run: python3 packaging/verify_native_physics.py
     - name: Upload preview (not a release)
       uses: actions/upload-artifact@v7
       with:
-        name: Mindustry-developer-panel-preview-Windows-x64
+        name: Mindustry-weather-preview-Windows-x64
         path: build/package/Mindustry/
         if-no-files-found: error
         retention-days: 14
