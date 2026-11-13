@@ -22,7 +22,12 @@ runs:
 
     - name: Run Java tests
       shell: bash
-      run: ./gradlew tests:test --rerun --stacktrace
+      run: |
+        set -o pipefail
+        ./gradlew tests:test --rerun --stacktrace 2>&1 | tee /tmp/mindustry-tests.log || {
+          python3 -c 'import pathlib; lines=pathlib.Path("/tmp/mindustry-tests.log").read_text(errors="replace").splitlines(); relevant=[l for l in lines if any(x in l for x in ("error:", "symbol:", "location:", " FAILED", "AssertionFailedError", "Exception", "What went wrong", "Caused by"))]; msg="\n".join(relevant[-50:])[-12000:]; print("::error::"+msg.replace("%","%25").replace("\r","%0D").replace("\n","%0A"))'
+          exit 1
+        }
 
     - name: Upload Java test reports
       if: ${{ always() }}
