@@ -106,10 +106,7 @@ abstract class UnitComp implements Healthc, Physicsc, Hitboxc, Statusc, Teamc, I
 
     public float floorSpeedMultiplier(){
         Floor on = isFlying() || type.hovering ? Blocks.air.asFloor() : floorOn();
-        // Hovering walkers still touch the ground; true hovercraft and flying
-        // units do not. Preserve all existing floor and status multipliers.
-        float snow = WeatherCycle.enabled() && isGrounded() && (!type.hovering || type.allowLegStep) && !floorOn().isLiquid ? WeatherCycle.groundSpeedMultiplier() : 1f;
-        return (float)Math.pow(on.speedMultiplier, type.floorMultiplier) * speedMultiplier * snow;
+        return (float)Math.pow(on.speedMultiplier, type.floorMultiplier) * speedMultiplier;
     }
 
     /** Called when this unit was unloaded from a factory or spawn point. */
@@ -193,7 +190,11 @@ abstract class UnitComp implements Healthc, Physicsc, Hitboxc, Statusc, Teamc, I
     public float speed(){
         float strafePenalty = isGrounded() || !isPlayer() ? 1f : Mathf.lerp(1f, type.strafePenalty, Angles.angleDist(vel().angle(), rotation) / 180f);
         float boost = Mathf.lerp(1f, type.canBoost ? type.boostMultiplier : 1f, elevation);
-        return type.speed * strafePenalty * boost * floorSpeedMultiplier();
+        // Apply after the polymorphic floor multiplier, including tanks and
+        // crawlers that replace floorSpeedMultiplier. Hovering walkers still
+        // touch the ground; true hovercraft and flying units do not.
+        float snow = WeatherCycle.enabled() && isGrounded() && (!type.hovering || type.allowLegStep) && !floorOn().isLiquid ? WeatherCycle.groundSpeedMultiplier() : 1f;
+        return type.speed * strafePenalty * boost * floorSpeedMultiplier() * snow;
     }
 
     /** @return where the unit wants to look at. */

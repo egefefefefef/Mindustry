@@ -120,27 +120,37 @@ class WeatherCycleTests{
     void snowSlowsAllGroundTeamsButNotFlyingOrWaterUnits(){
         state.rules.disableUnitCap = true;
         var tile = world.tile(10, 10);
+        tile.setBlock(Blocks.air);
         tile.setFloor(Blocks.stone.asFloor());
+        var enemyTile = world.tile(11, 10);
+        enemyTile.setBlock(Blocks.air);
+        enemyTile.setFloor(Blocks.stone.asFloor());
         float x = tile.worldx(), y = tile.worldy();
         var ally = UnitTypes.dagger.spawn(Team.sharded, x, y);
         var enemy = UnitTypes.dagger.spawn(Team.crux, x + 8, y);
         var flying = UnitTypes.flare.spawn(Team.sharded, x + 16, y);
+        flying.elevation = 1f;
+        var tank = UnitTypes.stell.spawn(Team.sharded, x, y);
+        var crawler = UnitTypes.crawler.spawn(Team.crux, x, y);
         state.rules.weatherCycle = false;
-        float allyBase = ally.floorSpeedMultiplier(), enemyBase = enemy.floorSpeedMultiplier(), airBase = flying.floorSpeedMultiplier();
+        float tankBase = tank.speed(), crawlerBase = crawler.speed();
+        float allyBase = ally.speed(), enemyBase = enemy.speed(), airBase = flying.speed();
         state.rules.weatherCycle = true;
         state.tick = WeatherCycle.phaseTicks * 3.5;
         assertTrue(WeatherCycle.snowDepth() > 0);
-        assertTrue(ally.floorSpeedMultiplier() < allyBase);
-        assertTrue(enemy.floorSpeedMultiplier() < enemyBase);
-        assertEquals(airBase, flying.floorSpeedMultiplier(), 0.0001f);
+        assertTrue(ally.speed() < allyBase);
+        assertTrue(enemy.speed() < enemyBase);
+        assertTrue(tank.speed() < tankBase);
+        assertTrue(crawler.speed() < crawlerBase);
+        assertEquals(airBase, flying.speed(), 0.0001f);
         tile.setFloor(Blocks.water.asFloor());
         state.rules.weatherCycle = false;
-        float waterBase = ally.floorSpeedMultiplier();
+        float waterBase = ally.speed();
         state.rules.weatherCycle = true;
-        assertEquals(waterBase, ally.floorSpeedMultiplier(), 0.0001f);
+        assertEquals(waterBase, ally.speed(), 0.0001f);
         state.rules.weatherCycle = false;
         tile.setFloor(Blocks.stone.asFloor());
-        assertEquals(allyBase, ally.floorSpeedMultiplier(), 0.0001f);
+        assertEquals(allyBase, ally.speed(), 0.0001f);
     }
 
     @Test

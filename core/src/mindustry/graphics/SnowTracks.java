@@ -44,7 +44,7 @@ public class SnowTracks{
             Unit unit = Groups.unit.index((cursor + i) % total);
             if(unit == null || !unit.isGrounded() || (unit.type.hovering && !unit.type.allowLegStep) || unit.floorOn().isLiquid || unit.deltaLen() < 0.05f) continue;
             // Stagger prints per unit, avoiding a burst every frame.
-            if(Math.floorMod(state.updateId + unit.id, 12) != 0) continue;
+            if(Math.floorMod((state.updateId ^ (state.updateId >>> 4)) + unit.id, 12) != 0) continue;
             float angle = unit.deltaAngle(), side = ((state.updateId / 12 + unit.id) & 1) == 0 ? 1f : -1f;
             float spread = Mathf.clamp(unit.hitSize * 0.12f, 1f, 4f) * side;
             xs[next] = unit.x + Angles.trnsx(angle + 90f, spread);
