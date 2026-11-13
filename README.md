@@ -93,12 +93,15 @@ weather and day/night** under Environment. For a campaign sector, enable
 by default and operate only in local single-player; multiplayer and the editor
 use the normal weather system.
 
-Clear weather, rain, fog and snow each last three minutes of active game time.
-Visual daylight and darkness follow a twelve-minute cycle. Rain and snow use
-existing weather effects and can therefore affect units and environmental
-attributes. The added puddles and snow cover are temporary visual overlays:
-they do not replace terrain or add physical liquid. Normal map weather
-scheduling is paused while the cycle is active; weather already present can
+Clear weather, rain, fog, snow and rain with fog each last three minutes of
+active game time. Their order and intensity vary. Visual daylight and darkness
+follow a twelve-minute cycle. Rain and snow use existing weather effects and
+can affect units and environmental attributes. Snow cover builds and melts
+and slows grounded units, including walkers, by up to 25%; flying units and
+non-walking hovercraft are unaffected.
+Temporary footprints are bounded, visual only, and not saved. Puddles grow and
+dry visually but are not physical liquid. Neither effect replaces terrain.
+Normal map weather scheduling is paused while the cycle is active; weather already present can
 continue until it expires. Turning off weather graphics hides these overlays,
 and disabling lighting hides the visual night. Back up important saves before
 using experimental features.

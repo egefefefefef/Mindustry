@@ -106,7 +106,10 @@ abstract class UnitComp implements Healthc, Physicsc, Hitboxc, Statusc, Teamc, I
 
     public float floorSpeedMultiplier(){
         Floor on = isFlying() || type.hovering ? Blocks.air.asFloor() : floorOn();
-        return (float)Math.pow(on.speedMultiplier, type.floorMultiplier) * speedMultiplier;
+        // Hovering walkers still touch the ground; true hovercraft and flying
+        // units do not. Preserve all existing floor and status multipliers.
+        float snow = WeatherCycle.enabled() && isGrounded() && (!type.hovering || type.allowLegStep) && !floorOn().isLiquid ? WeatherCycle.groundSpeedMultiplier() : 1f;
+        return (float)Math.pow(on.speedMultiplier, type.floorMultiplier) * speedMultiplier * snow;
     }
 
     /** Called when this unit was unloaded from a factory or spawn point. */
