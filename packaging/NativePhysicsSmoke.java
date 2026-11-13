@@ -16,7 +16,7 @@ public class NativePhysicsSmoke{
     public static void main(String[] args) throws Exception{
         System.clearProperty("mindustry.experimentalNativePhysics");
         Version.init();
-        String expectedVersion = args.length == 0 ? "1.2" : args[0];
+        String expectedVersion = args.length == 0 ? "1.3" : args[0];
         if(!expectedVersion.equals(Version.distributionVersion) || !Version.nativePhysicsDefault){
             throw new AssertionError("Expected " + expectedVersion + " with Rust physics enabled by default");
         }
