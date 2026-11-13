@@ -1,6 +1,8 @@
 import arc.Core;
 import arc.Events;
 import mindustry.content.SectorPresets;
+import mindustry.async.PhysicsProcess;
+import mindustry.core.Version;
 import mindustry.content.Weathers;
 import mindustry.content.UnitTypes;
 import mindustry.content.Blocks;
@@ -221,6 +223,64 @@ class WeatherCycleTests{
             assertEquals(0, Groups.weather.size());
         }finally{
             active.setBoolean(net, false);
+        }
+    }
+
+    @Test
+    void experimentalWeatherPreferenceHandlesCustomWorldsAndPreservesOldRules() throws Exception{
+        boolean oldHeadless = headless;
+        boolean oldPreference = Core.settings.getBool("campaignweathercycle", false);
+        try{
+            headless = false;
+            Rules rules = new Rules();
+            Core.settings.put("campaignweathercycle", true);
+            Events.fire(new RulesLoadEvent(rules, true));
+            assertTrue(rules.weatherCycle);
+            Core.settings.put("campaignweathercycle", false);
+            Events.fire(new RulesLoadEvent(rules, true));
+            assertTrue(rules.weatherCycle, "Existing per-world custom rules must not be erased");
+            Rules fresh = new Rules();
+            Events.fire(new RulesLoadEvent(fresh));
+            assertFalse(fresh.weatherCycle);
+            Core.settings.put("campaignweathercycle", true);
+            fresh.editor = true;
+            Events.fire(new RulesLoadEvent(fresh));
+            assertFalse(fresh.weatherCycle);
+            fresh.editor = false;
+            var active = net.getClass().getDeclaredField("active");
+            active.setAccessible(true);
+            active.setBoolean(net, true);
+            try{
+                Events.fire(new RulesLoadEvent(fresh));
+                assertFalse(fresh.weatherCycle);
+            }finally{
+                active.setBoolean(net, false);
+            }
+        }finally{
+            headless = oldHeadless;
+            Core.settings.put("campaignweathercycle", oldPreference);
+        }
+    }
+
+    @Test
+    void rustPhysicsPreferenceAndCommandLineOverride(){
+        String property = System.getProperty("mindustry.experimentalNativePhysics");
+        boolean previous = Core.settings.getBool("experimental-native-physics", Version.nativePhysicsDefault);
+        try{
+            System.clearProperty("mindustry.experimentalNativePhysics");
+            Core.settings.put("experimental-native-physics", false);
+            assertFalse(PhysicsProcess.nativePhysicsEnabled());
+            Core.settings.put("experimental-native-physics", true);
+            assertTrue(PhysicsProcess.nativePhysicsEnabled());
+            System.setProperty("mindustry.experimentalNativePhysics", "false");
+            assertFalse(PhysicsProcess.nativePhysicsEnabled());
+            Core.settings.put("experimental-native-physics", false);
+            System.setProperty("mindustry.experimentalNativePhysics", "true");
+            assertTrue(PhysicsProcess.nativePhysicsEnabled());
+        }finally{
+            Core.settings.put("experimental-native-physics", previous);
+            if(property == null) System.clearProperty("mindustry.experimentalNativePhysics");
+            else System.setProperty("mindustry.experimentalNativePhysics", property);
         }
     }
 

@@ -36,6 +36,7 @@ public class SettingsMenuDialog extends BaseDialog{
     public SettingsTable game;
     public SettingsTable sound;
     public SettingsTable dev;
+    public SettingsTable experimental;
     public SettingsTable main;
 
     private Table prefs;
@@ -65,6 +66,7 @@ public class SettingsMenuDialog extends BaseDialog{
                 sound.rebuild();
                 game.rebuild();
                 dev.rebuild();
+                experimental.rebuild();
                 updateScrollFocus();
                 lastRebuildSize[0] = Core.graphics.getWidth();
                 lastRebuildSize[1] = Core.graphics.getHeight();
@@ -81,6 +83,8 @@ public class SettingsMenuDialog extends BaseDialog{
         graphics = new SettingsTable();
         sound = new SettingsTable();
         dev = new SettingsTable();
+        experimental = new SettingsTable();
+        experimental.resetAction = () -> applyLocalWeatherPreference(settings.getBool("campaignweathercycle", false));
 
         prefs = new Table();
         prefs.top();
@@ -352,8 +356,9 @@ public class SettingsMenuDialog extends BaseDialog{
 
         menu.button("@settings.data", Icon.save, style, isize, () -> dataDialog.show()).marginLeft(marg).row();
         menu.button("@settings.dev", Icon.fileCode, style, isize, () -> visible(3)).marginLeft(marg).row();
+        menu.button("@settings.experimental", Icon.settings, style, isize, () -> visible(4)).marginLeft(marg).row();
 
-        int i = 4;
+        int i = 5;
         for(var cat : categories){
             int index = i;
             if(cat.icon == null){
@@ -362,6 +367,12 @@ public class SettingsMenuDialog extends BaseDialog{
                 menu.button(cat.name, cat.icon, style, isize, () -> visible(index)).with(b -> ((Image)b.getChildren().get(1)).setScaling(Scaling.fit)).marginLeft(marg).row();
             }
             i++;
+        }
+    }
+
+    private void applyLocalWeatherPreference(boolean enabled){
+        if(state != null && state.isGame() && !state.isEditor() && net != null && !net.active()){
+            state.rules.weatherCycle = enabled;
         }
     }
 
@@ -402,16 +413,13 @@ public class SettingsMenuDialog extends BaseDialog{
             }
         });
 
-        game.checkPref("campaignweathercycle", false, value -> {
-            if(state != null && state.isCampaign() && net != null && !net.active()){
-                state.rules.weatherCycle = value;
-            }
-        });
-        game.sliderPref("weathercycle-rainmode", 0, 0, 2, i -> bundle.get(switch(i){
+        experimental.checkPref("campaignweathercycle", false, this::applyLocalWeatherPreference);
+        experimental.sliderPref("weathercycle-rainmode", 0, 0, 2, i -> bundle.get(switch(i){
             case 1 -> "weathercycle.rain.normal";
             case 2 -> "weathercycle.rain.downpour";
             default -> "weathercycle.rain.auto";
         }));
+        experimental.checkPref("experimental-native-physics", mindustry.core.Version.nativePhysicsDefault);
         game.checkPref("savecreate", true);
         game.checkPref("blockreplace", true);
         game.checkPref("conveyorpathfinding", true);
@@ -669,7 +677,7 @@ public class SettingsMenuDialog extends BaseDialog{
         prefs.clearChildren();
 
         Seq<Table> tables = new Seq<>();
-        tables.addAll(game, graphics, sound, dev);
+        tables.addAll(game, graphics, sound, dev, experimental);
         for(var custom : categories){
             tables.add(custom.table);
         }
@@ -720,6 +728,7 @@ public class SettingsMenuDialog extends BaseDialog{
 
     public static class SettingsTable extends Table{
         protected Seq<Setting> list = new Seq<>();
+        public @Nullable Runnable resetAction;
 
         public SettingsTable(){
             left();
@@ -802,6 +811,7 @@ public class SettingsMenuDialog extends BaseDialog{
                     if(setting.name == null || setting.title == null) continue;
                     settings.remove(setting.name);
                 }
+                if(resetAction != null) resetAction.run();
                 rebuild();
             }).margin(14).width(240f).pad(6);
         }

@@ -1,5 +1,6 @@
 package mindustry.async;
 
+import arc.Core;
 import arc.math.*;
 import arc.math.geom.*;
 import arc.math.geom.QuadTree.*;
@@ -155,11 +156,13 @@ public class PhysicsProcess implements AsyncProcess{
             }
         }
 
+        // Read settings on the main thread before dispatching physics workers.
+        boolean preferNative = nativePhysicsEnabled();
         //one task per world
         futures.clear();
         for(int i = 0; i < layers; i++){
             PhysicsWorld world = physics[i];
-            futures.add(Vars.mainExecutor.submit(() -> { world.update(); }));
+            futures.add(Vars.mainExecutor.submit(() -> { world.update(preferNative); }));
         }
     }
 
@@ -205,6 +208,13 @@ public class PhysicsProcess implements AsyncProcess{
         }
     }
 
+    /** Command-line override wins; otherwise use the local preference and build default. */
+    public static boolean nativePhysicsEnabled(){
+        String override = System.getProperty("mindustry.experimentalNativePhysics");
+        if(override != null) return Boolean.parseBoolean(override);
+        return Core.settings == null ? Version.nativePhysicsDefault : Core.settings.getBool("experimental-native-physics", Version.nativePhysicsDefault);
+    }
+
     //world for simulating a single collision layer's physics, meant to run on its own thread
     public static class PhysicsWorld{
         //how much to soften movement by
@@ -236,8 +246,7 @@ public class PhysicsProcess implements AsyncProcess{
         }
 
         public void update(){
-            String override = System.getProperty("mindustry.experimentalNativePhysics");
-            update(override == null ? Version.nativePhysicsDefault : Boolean.parseBoolean(override));
+            update(nativePhysicsEnabled());
         }
 
         /** Runs one step and reports whether the experimental native kernel was used. */

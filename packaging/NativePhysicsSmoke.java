@@ -1,3 +1,5 @@
+import arc.Core;
+import arc.Settings;
 import arc.math.geom.Rect;
 import mindustry.Vars;
 import mindustry.async.PhysicsProcess.PhysicsWorld;
@@ -37,6 +39,15 @@ public class NativePhysicsSmoke{
             throw new AssertionError("Default physics produced unexpected positions");
         }
 
+        // Exercise the menu preference against the actual packaged JNI bridge.
+        Core.settings = new Settings();
+        Core.settings.put("experimental-native-physics", false);
+        world.update();
+        if(world.lastBackend() != PhysicsBackend.javaDisabled) throw new AssertionError("Physics preference did not disable Rust");
+        Core.settings.put("experimental-native-physics", true);
+        world.update();
+        if(world.lastBackend() != PhysicsBackend.rust) throw new AssertionError("Physics preference did not enable Rust");
+
         System.setProperty("mindustry.experimentalNativePhysics", "false");
         PhysicsWorld disabled = new PhysicsWorld(new Rect(0f, 0f, 100f, 100f));
         disabled.add(body(10f));
@@ -50,7 +61,7 @@ public class NativePhysicsSmoke{
         if(fallback.update(true) || fallback.lastBackend() != PhysicsBackend.javaFallback){
             throw new AssertionError("Stacked-body fallback diagnostic missing");
         }
-        System.out.println("Packaged " + expectedVersion + " Rust physics, Java override and diagnostics verified");
+        System.out.println("Packaged " + expectedVersion + " Rust physics, menu preference, Java override and diagnostics verified");
     }
 
     private static PhysicsBody body(float x){

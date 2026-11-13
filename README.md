@@ -85,16 +85,22 @@ Post feature requests and feedback [here](https://github.com/Anuken/Mindustry-Su
 | [![](https://static.itch.io/images/badge.svg)](https://anuke.itch.io/mindustry)    |    [![](https://play.google.com/intl/en_us/badges/images/generic/en-play-badge.png)](https://play.google.com/store/apps/details?id=io.anuke.mindustry)   |    [![](https://fdroid.gitlab.io/artwork/badge/get-it-on.png)](https://f-droid.org/packages/io.anuke.mindustry)	| [![](https://flathub.org/assets/badges/flathub-badge-en.svg)](https://flathub.org/apps/details/com.github.Anuken.Mindustry)  
 |---	|---	|---	|---	|
 
-### Optional local weather cycle
+### Experimental features
 
-For a custom map, open **Customize** before starting and enable **Automatic
-weather and day/night** under Environment. For a campaign sector, enable
-**Automatic weather and day/night in campaign** in Game settings. Both are off
-by default and operate only in local single-player; multiplayer and the editor
-use the normal weather system. In Game settings, **Rain intensity (automatic
-weather)** selects automatic, normal rain or downpour for both modes. This is
-a local preference, not a saved world rule: it changes the strength of rain,
-including current rain, but does not force rain or alter the phase schedule.
+Open **Settings → Experimental features** to enable the optional automatic
+weather cycle for both local custom games and campaign. The toggle affects the
+current local game as well as subsequently loaded worlds. Old custom saves may
+also enable it via **Customize → Environment**; this per-world rule remains
+supported when the global preference is off. Weather and day/night are not
+applied in multiplayer or the editor.
+
+In the same section, **Rain intensity** selects automatic, normal rain or
+downpour. This is a local preference, not a saved world rule: it changes the
+strength of rain, including current rain, but does not force rain or alter the
+phase schedule. **Rust unit physics** enables the experimental native unit
+collision backend; when unavailable or unsuitable, Java is used instead. Its
+default depends on the build, and `-Dmindustry.experimentalNativePhysics` takes
+priority over the menu. Changing it applies to subsequent simulation steps.
 
 Clear weather, rain, fog, snow and rain with fog each last three minutes of
 active game time. Their order and intensity vary. Visual daylight and darkness
