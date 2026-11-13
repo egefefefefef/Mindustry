@@ -5,6 +5,7 @@ import arc.util.Time;
 import mindustry.content.Weathers;
 import mindustry.gen.Call;
 import mindustry.type.Weather;
+import mindustry.type.Weather.WeatherEntry;
 
 import static mindustry.Vars.*;
 
@@ -21,8 +22,12 @@ public class WeatherCycle{
     private static float cachedSnow, cachedPuddle;
     private static int cachedRainMode = -1;
 
+    public static boolean localGame(){
+        return state != null && state.isGame() && !state.isEditor() && net != null && !net.active();
+    }
+
     public static boolean enabled(){
-        return state != null && state.isGame() && !state.isEditor() && state.rules.weatherCycle && net != null && !net.active();
+        return localGame() && state.rules.weatherCycle;
     }
 
     private static double validTick(double tick){
@@ -71,6 +76,19 @@ public class WeatherCycle{
 
     public static float rainIntensityAt(double tick, int mode){
         return rainIntensityForSlot(slotAt(tick), mode);
+    }
+
+    /** For an explicitly configured always-on rain entry, automatic uses its own intensity. */
+    public static float alwaysRainIntensity(WeatherEntry entry){
+        int mode = rainMode();
+        return mode == 1 ? 0.55f : mode == 2 ? 1f : entry.intensity;
+    }
+
+    private static WeatherEntry alwaysEntry(Weather weather){
+        for(WeatherEntry entry : state.rules.weather){
+            if(entry.always && entry.weather == weather) return entry;
+        }
+        return null;
     }
 
     private static float rainIntensityForSlot(long slot, int mode){
@@ -131,6 +149,12 @@ public class WeatherCycle{
     public static float puddles(){
         if(!enabled()) return 0f;
         refreshCover();
+        // A map can request continuous rain even during a clear cycle phase.
+        // Fade in with the actual weather so fresh rain does not instantly flood.
+        var rain = Weathers.rain.instance();
+        if(alwaysEntry(Weathers.rain) != null && rain != null){
+            return Math.max(cachedPuddle, Math.min(1f, rain.opacity * rain.intensity));
+        }
         return cachedPuddle;
     }
 
@@ -149,16 +173,32 @@ public class WeatherCycle{
         if(weather != null && !weather.isActive()) Call.createWeather(weather, intensity, remaining, 1f, 0f);
     }
 
-    /** Called on the game thread only. Existing map weather entries are left intact. */
+    /** Called on the game thread only. Scheduled entries pause, but explicit
+     * always-on entries remain active even during a clear cycle phase. */
     public static void update(){
         if(!enabled()) return;
         double tick = validTick(state.tick);
         Phase phase = phaseAt(tick);
         float remaining = (float)(phaseTicks - tick % phaseTicks);
+
+        // Renew a short lifetime rather than making a permanent infinite entity;
+        // removing the always rule then lets the weather fade normally.
+        float renewal = 15f * Time.toSeconds;
+        for(WeatherEntry entry : state.rules.weather){
+            if(!entry.always || entry.weather == null) continue;
+            float intensity = entry.weather == Weathers.rain ? alwaysRainIntensity(entry) : entry.intensity;
+            ensureWeather(entry.weather, intensity, renewal);
+            var instance = entry.weather.instance();
+            if(instance != null){
+                if(!Float.isFinite(instance.life) || instance.life < renewal) instance.life(renewal);
+                if(entry.weather == Weathers.rain) instance.intensity(intensity);
+            }
+        }
+
         if(phase == Phase.rain || phase == Phase.rainFog){
-            float intensity = rainIntensityAt(tick, rainMode());
+            var alwaysRain = alwaysEntry(Weathers.rain);
+            float intensity = alwaysRain == null ? rainIntensityAt(tick, rainMode()) : alwaysRainIntensity(alwaysRain);
             ensureWeather(Weathers.rain, intensity, remaining);
-            // Apply preference changes during an existing rain event too.
             var rain = Weathers.rain.instance();
             if(rain != null) rain.intensity(intensity);
         }

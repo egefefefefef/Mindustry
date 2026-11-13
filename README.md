@@ -96,8 +96,8 @@ applied in multiplayer or the editor.
 
 In the same section, **Rain intensity** selects automatic, normal rain or
 downpour. This is a local preference, not a saved world rule: it changes the
-strength of rain, including current rain, but does not force rain or alter the
-phase schedule. **Rust unit physics** enables the experimental native unit
+strength of cycle rain and local map rain marked **Always**, including current
+rain, but does not force rain or alter the phase schedule. **Rust unit physics** enables the experimental native unit
 collision backend; when unavailable or unsuitable, Java is used instead. Its
 default depends on the build, and `-Dmindustry.experimentalNativePhysics` takes
 priority over the menu. Changing it applies to subsequent simulation steps.
@@ -110,7 +110,9 @@ and slows grounded units, including walkers, by up to 25%; flying units and
 non-walking hovercraft are unaffected.
 Temporary footprints are bounded, visual only, and not saved. Puddles appear on exposed dry ground during the cycle, grow and
 dry visually but are not physical liquid. Weather graphics must be enabled to see them. Neither effect replaces terrain.
-Normal map weather scheduling is paused while the cycle is active; weather already present can
-continue until it expires. Turning off weather graphics hides these overlays,
+Normal map weather scheduling is paused while the cycle is active, but map
+weather entries marked **Always** continue alongside the cycle. They start
+immediately, including rain during the initial clear phase. Other weather
+already present can continue until it expires. Turning off weather graphics hides these overlays,
 and disabling lighting hides the visual night. Back up important saves before
 using experimental features.

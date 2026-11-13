@@ -393,12 +393,18 @@ public class Logic implements ApplicationListener{
             //update cooldown
             entry.cooldown -= Time.delta;
 
+            // A local always-on rain entry also respects the experimental rain
+            // intensity selector even when the automatic cycle is switched off.
+            boolean localAlwaysRain = WeatherCycle.localGame() && entry.always && entry.weather == Weathers.rain;
+            if(localAlwaysRain && entry.weather.isActive()){
+                entry.weather.instance().intensity(WeatherCycle.alwaysRainIntensity(entry));
+            }
             //create new event when not active
             if((entry.cooldown < 0 || entry.always) && !entry.weather.isActive()){
                 float duration = entry.always ? Float.POSITIVE_INFINITY : Mathf.random(entry.minDuration, entry.maxDuration);
                 entry.cooldown = duration + Mathf.random(entry.minFrequency, entry.maxFrequency);
                 Tmp.v1.setToRandomDirection();
-                Call.createWeather(entry.weather, entry.intensity, duration, Tmp.v1.x, Tmp.v1.y);
+                Call.createWeather(entry.weather, localAlwaysRain ? WeatherCycle.alwaysRainIntensity(entry) : entry.intensity, duration, Tmp.v1.x, Tmp.v1.y);
             }
         }
     }

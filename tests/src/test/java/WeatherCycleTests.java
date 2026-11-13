@@ -11,6 +11,7 @@ import mindustry.core.GameState.State;
 import mindustry.game.EventType.RulesLoadEvent;
 import mindustry.game.Rules;
 import mindustry.game.WeatherCycle;
+import mindustry.type.Weather.WeatherEntry;
 import mindustry.gen.Groups;
 import mindustry.io.JsonIO;
 import mindustry.io.SaveIO;
@@ -145,6 +146,75 @@ class WeatherCycleTests{
             assertEquals(0f, WeatherCycle.puddles(), 0.0001f);
         }finally{
             Core.settings.put("weathercycle-rainmode", previous);
+        }
+    }
+
+    @Test
+    void alwaysRainStartsImmediatelyAcrossCyclePhasesAndCanBeStopped(){
+        int previousMode = Core.settings.getInt("weathercycle-rainmode", 0);
+        try{
+            state.rules.weather.clear();
+            var entry = new WeatherEntry(Weathers.rain);
+            entry.always = true;
+            entry.intensity = 0.7f;
+            state.rules.weather.add(entry);
+            state.rules.weatherCycle = true;
+            state.tick = 0; // normally the first phase is clear
+            Core.settings.put("weathercycle-rainmode", 2);
+            WeatherCycle.update();
+            var rain = Weathers.rain.instance();
+            assertNotNull(rain, "Always-on rain must not wait for a cycle phase");
+            assertEquals(1f, rain.intensity, 0.0001f);
+            assertTrue(Float.isFinite(rain.life));
+            rain.opacity(0.5f);
+            assertTrue(WeatherCycle.puddles() > 0f, "Always-on rain builds puddles during clear phases");
+            rain.life(1f);
+            state.tick = 2 * WeatherCycle.phaseTicks;
+            WeatherCycle.update();
+            assertSame(rain, Weathers.rain.instance());
+            assertTrue(rain.life > 1f);
+            assertTrue(Weathers.fog.isActive());
+            Core.settings.put("weathercycle-rainmode", 1);
+            WeatherCycle.update();
+            assertEquals(0.55f, rain.intensity, 0.0001f);
+            Core.settings.put("weathercycle-rainmode", 0);
+            WeatherCycle.update();
+            assertEquals(0.7f, rain.intensity, 0.0001f);
+            entry.always = false;
+            state.tick = 0;
+            rain.life(-1f);
+            rain.update();
+            WeatherCycle.update();
+            assertFalse(Weathers.rain.isActive(), "Removed always-on rain must not restart in a clear phase");
+        }finally{
+            Core.settings.put("weathercycle-rainmode", previousMode);
+        }
+    }
+
+    @Test
+    void alwaysRainHonorsSelectorWhenCycleIsDisabled() throws Exception{
+        int previousMode = Core.settings.getInt("weathercycle-rainmode", 0);
+        try{
+            state.rules.weather.clear();
+            var entry = new WeatherEntry(Weathers.rain);
+            entry.always = true;
+            entry.intensity = 0.7f;
+            state.rules.weather.add(entry);
+            state.rules.weatherCycle = false;
+            var update = mindustry.core.Logic.class.getDeclaredMethod("updateWeather");
+            update.setAccessible(true);
+            Core.settings.put("weathercycle-rainmode", 2);
+            update.invoke(logic);
+            assertNotNull(Weathers.rain.instance());
+            assertEquals(1f, Weathers.rain.instance().intensity, 0.0001f);
+            Core.settings.put("weathercycle-rainmode", 1);
+            update.invoke(logic);
+            assertEquals(0.55f, Weathers.rain.instance().intensity, 0.0001f);
+            Core.settings.put("weathercycle-rainmode", 0);
+            update.invoke(logic);
+            assertEquals(0.7f, Weathers.rain.instance().intensity, 0.0001f);
+        }finally{
+            Core.settings.put("weathercycle-rainmode", previousMode);
         }
     }
 
