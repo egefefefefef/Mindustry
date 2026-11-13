@@ -407,6 +407,11 @@ public class SettingsMenuDialog extends BaseDialog{
                 state.rules.weatherCycle = value;
             }
         });
+        game.sliderPref("weathercycle-rainmode", 0, 0, 2, i -> bundle.get(switch(i){
+            case 1 -> "weathercycle.rain.normal";
+            case 2 -> "weathercycle.rain.downpour";
+            default -> "weathercycle.rain.auto";
+        }));
         game.checkPref("savecreate", true);
         game.checkPref("blockreplace", true);
         game.checkPref("conveyorpathfinding", true);

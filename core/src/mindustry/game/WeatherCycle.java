@@ -1,5 +1,6 @@
 package mindustry.game;
 
+import arc.Core;
 import arc.util.Time;
 import mindustry.content.Weathers;
 import mindustry.gen.Call;
@@ -12,12 +13,13 @@ public class WeatherCycle{
     public static final double phaseTicks = 3d * Time.toMinutes;
     public static final double dayTicks = 12d * Time.toMinutes;
     private static final double snowBuildTicks = 90d * Time.toSeconds, snowMeltTicks = 4d * Time.toMinutes;
-    private static final double puddleBuildTicks = 120d * Time.toSeconds, puddleDryTicks = 2d * Time.toMinutes;
+    private static final double puddleBuildTicks = 45d * Time.toSeconds, puddleDryTicks = 2d * Time.toMinutes;
 
     public enum Phase { clear, rain, fog, snow, rainFog }
     private static final Phase[] phases = Phase.values();
     private static double cachedTick = Double.NaN;
     private static float cachedSnow, cachedPuddle;
+    private static int cachedRainMode = -1;
 
     public static boolean enabled(){
         return state != null && state.isGame() && !state.isEditor() && state.rules.weatherCycle && net != null && !net.active();
@@ -61,6 +63,20 @@ public class WeatherCycle{
         return intensityForSlot(slotAt(tick), kind);
     }
 
+    /** Local preference: 0 = automatic, 1 = normal rain, 2 = downpour. */
+    public static int rainMode(){
+        int mode = Core.settings == null ? 0 : Core.settings.getInt("weathercycle-rainmode", 0);
+        return mode < 0 || mode > 2 ? 0 : mode;
+    }
+
+    public static float rainIntensityAt(double tick, int mode){
+        return rainIntensityForSlot(slotAt(tick), mode);
+    }
+
+    private static float rainIntensityForSlot(long slot, int mode){
+        return mode == 1 ? 0.55f : mode == 2 ? 1f : intensityForSlot(slot, Phase.rain);
+    }
+
     private static float intensityForSlot(long slot, Phase kind){
         long mixed = mix(slot * 0x9e3779b97f4a7c15L + kind.ordinal() * 0x632be59bd9b4e019L);
         return switch((int)Long.remainderUnsigned(mixed, 3)){
@@ -71,7 +87,7 @@ public class WeatherCycle{
     }
 
     /** Gradual world-wide snow and wetness; history is derived from the saved tick. */
-    private static float coverAt(double tick, boolean snow){
+    private static float coverAt(double tick, boolean snow, int rainMode){
         tick = validTick(tick);
         long current = slotAt(tick);
         float result = 0f;
@@ -81,7 +97,7 @@ public class WeatherCycle{
             Phase phase = phaseForSlot(slot);
             if(snow ? phase != Phase.snow : phase != Phase.rain && phase != Phase.rainFog) continue;
             double start = slot * phaseTicks, end = start + phaseTicks;
-            float strength = intensityForSlot(slot, snow ? Phase.snow : Phase.rain);
+            float strength = snow ? intensityForSlot(slot, Phase.snow) : rainIntensityForSlot(slot, rainMode);
             double activeTime = Math.max(0, Math.min(tick, end) - start);
             double build = snow ? snowBuildTicks : puddleBuildTicks;
             double dry = snow ? snowMeltTicks : puddleDryTicks;
@@ -91,15 +107,18 @@ public class WeatherCycle{
         return Math.min(1f, Math.max(0f, result));
     }
 
-    public static float snowDepthAt(double tick){ return coverAt(tick, true); }
-    public static float puddlesAt(double tick){ return coverAt(tick, false); }
+    public static float snowDepthAt(double tick){ return coverAt(tick, true, 0); }
+    public static float puddlesAt(double tick){ return puddlesAt(tick, 0); }
+    public static float puddlesAt(double tick, int rainMode){ return coverAt(tick, false, rainMode); }
 
     private static void refreshCover(){
         double tick = validTick(state.tick);
-        if(cachedTick != tick){
+        int mode = rainMode();
+        if(cachedTick != tick || cachedRainMode != mode){
             cachedTick = tick;
+            cachedRainMode = mode;
             cachedSnow = snowDepthAt(tick);
-            cachedPuddle = puddlesAt(tick);
+            cachedPuddle = puddlesAt(tick, mode);
         }
     }
 
@@ -137,7 +156,11 @@ public class WeatherCycle{
         Phase phase = phaseAt(tick);
         float remaining = (float)(phaseTicks - tick % phaseTicks);
         if(phase == Phase.rain || phase == Phase.rainFog){
-            ensureWeather(Weathers.rain, intensityAt(tick, Phase.rain), remaining);
+            float intensity = rainIntensityAt(tick, rainMode());
+            ensureWeather(Weathers.rain, intensity, remaining);
+            // Apply preference changes during an existing rain event too.
+            var rain = Weathers.rain.instance();
+            if(rain != null) rain.intensity(intensity);
         }
         if(phase == Phase.fog || phase == Phase.rainFog){
             ensureWeather(Weathers.fog, intensityAt(tick, Phase.fog), remaining);

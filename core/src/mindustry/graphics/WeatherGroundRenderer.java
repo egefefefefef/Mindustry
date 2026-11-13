@@ -15,7 +15,8 @@ import static mindustry.Vars.*;
 public class WeatherGroundRenderer{
     private final Rect bounds = new Rect();
     private final SnowTracks tracks = new SnowTracks();
-    private static final Color puddle = Color.valueOf("465e80");
+    private static final Color puddle = Color.valueOf("293e5c");
+    private static final Color glint = Color.valueOf("b8d7eb");
 
     public void draw(){
         if(!WeatherCycle.enabled() || !renderer.drawWeather || !Core.settings.getBool("showweather", true)) return;
@@ -43,18 +44,25 @@ public class WeatherGroundRenderer{
             }
         }
         if(rainAlpha >= 0.01f){
-            Draw.color(puddle, Mathf.clamp(rainAlpha * 0.35f));
+            // Contrast and baseline size make fresh puddles visible within seconds,
+            // then both their size and coverage increase with accumulated rain.
+            float growth = Mathf.clamp(rainAlpha * 2f);
             for(int x = minX; x <= maxX; x += stride){
                 for(int y = minY; y <= maxY; y += stride){
-                    // Stable world-space pattern so puddles do not move with the camera.
                     int hash = (x * 73856093) ^ (y * 19349663);
-                    if((hash & 15) >= 1 + (int)(rainAlpha * 8f)) continue;
+                    if((hash & 15) >= 6 + (int)(growth * 7f)) continue;
                     Tile tile = world.tile(x, y);
                     if(tile != null && !tile.floor().isLiquid && !tile.block().solid){
-                        float radius = 1.2f + 2.5f * rainAlpha;
+                        float radius = 1.5f + 2.2f * growth;
                         float px = tile.worldx() + ((hash >>> 4) & 3) - 1.5f;
-                        Fill.circle(px, tile.worldy(), radius);
-                        if(rainAlpha > 0.35f) Fill.circle(px + radius * 0.6f, tile.worldy() + 1f, radius * 0.65f);
+                        float py = tile.worldy() + ((hash >>> 6) & 3) - 1.5f;
+                        Draw.color(puddle, Mathf.clamp((0.32f + 0.38f * growth) * renderer.weatherAlpha));
+                        Fill.circle(px, py, radius);
+                        if(growth > 0.18f) Fill.circle(px + radius * 0.65f, py + radius * 0.25f, radius * 0.7f);
+                        // Soft moving reflections, not map water or physical liquid.
+                        float shimmer = 0.5f + 0.5f * Mathf.sin((float)state.tick / 28f + (hash & 255));
+                        Draw.color(glint, (0.15f + 0.2f * shimmer) * renderer.weatherAlpha);
+                        Fill.circle(px - radius * 0.25f, py + radius * 0.25f, Math.max(0.35f, radius * 0.22f));
                     }
                 }
             }

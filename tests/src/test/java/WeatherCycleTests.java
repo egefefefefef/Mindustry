@@ -117,6 +117,36 @@ class WeatherCycleTests{
     }
 
     @Test
+    void rainPreferenceChangesCurrentRainAndPuddlesWithoutChangingOtherWeather(){
+        int previous = Core.settings.getInt("weathercycle-rainmode", 0);
+        try{
+            state.rules.weatherCycle = true;
+            state.tick = WeatherCycle.phaseTicks + 10 * 60;
+            Core.settings.put("weathercycle-rainmode", 1);
+            WeatherCycle.update();
+            assertEquals(0.55f, Weathers.rain.instance().intensity, 0.0001f);
+            float normal = WeatherCycle.puddles();
+            assertTrue(normal > 0.01f, "Puddles should start appearing early in a rain phase");
+            var rain = Weathers.rain.instance();
+            Core.settings.put("weathercycle-rainmode", 2);
+            WeatherCycle.update();
+            assertSame(rain, Weathers.rain.instance());
+            assertEquals(1f, rain.intensity, 0.0001f);
+            assertTrue(WeatherCycle.puddles() > normal, "Downpour accumulates more water");
+            assertEquals(1, Groups.weather.size());
+            Core.settings.put("weathercycle-rainmode", 0);
+            WeatherCycle.update();
+            assertEquals(WeatherCycle.intensityAt(state.tick, WeatherCycle.Phase.rain), rain.intensity, 0.0001f);
+            Core.settings.put("weathercycle-rainmode", 99);
+            assertEquals(0, WeatherCycle.rainMode());
+            state.rules.weatherCycle = false;
+            assertEquals(0f, WeatherCycle.puddles(), 0.0001f);
+        }finally{
+            Core.settings.put("weathercycle-rainmode", previous);
+        }
+    }
+
+    @Test
     void snowSlowsAllGroundTeamsButNotFlyingOrWaterUnits(){
         state.rules.disableUnitCap = true;
         var tile = world.tile(10, 10);

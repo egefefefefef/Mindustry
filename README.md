@@ -91,7 +91,10 @@ For a custom map, open **Customize** before starting and enable **Automatic
 weather and day/night** under Environment. For a campaign sector, enable
 **Automatic weather and day/night in campaign** in Game settings. Both are off
 by default and operate only in local single-player; multiplayer and the editor
-use the normal weather system.
+use the normal weather system. In Game settings, **Rain intensity (automatic
+weather)** selects automatic, normal rain or downpour for both modes. This is
+a local preference, not a saved world rule: it changes the strength of rain,
+including current rain, but does not force rain or alter the phase schedule.
 
 Clear weather, rain, fog, snow and rain with fog each last three minutes of
 active game time. Their order and intensity vary. Visual daylight and darkness
@@ -99,8 +102,8 @@ follow a twelve-minute cycle. Rain and snow use existing weather effects and
 can affect units and environmental attributes. Snow cover builds and melts
 and slows grounded units, including walkers, by up to 25%; flying units and
 non-walking hovercraft are unaffected.
-Temporary footprints are bounded, visual only, and not saved. Puddles grow and
-dry visually but are not physical liquid. Neither effect replaces terrain.
+Temporary footprints are bounded, visual only, and not saved. Puddles appear on exposed dry ground during the cycle, grow and
+dry visually but are not physical liquid. Weather graphics must be enabled to see them. Neither effect replaces terrain.
 Normal map weather scheduling is paused while the cycle is active; weather already present can
 continue until it expires. Turning off weather graphics hides these overlays,
 and disabling lighting hides the visual night. Back up important saves before
