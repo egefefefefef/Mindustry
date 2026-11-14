@@ -8,6 +8,7 @@ import mindustry.game.Team;
 import mindustry.game.caves.CaveSaveStore;
 import mindustry.game.caves.CaveWorldTransfer;
 import mindustry.game.caves.CaveInventoryLedger;
+import mindustry.game.caves.CaveSimulationCoordinator;
 import mindustry.game.caves.CaveSimulationExchange;
 import mindustry.io.SaveIO;
 import org.junit.jupiter.api.BeforeAll;
@@ -132,6 +133,13 @@ class CaveSimulationWorkerTests{
             assertTrue(proposal.counts()[CaveContent.amethyst.id] > 0);
             assertEquals(50, proposal.counts()[Items.copper.id]);
             assertEquals(0, Team.sharded.core().items.get(CaveContent.amethyst), "Proposal must not mutate the active world");
+            var coordinator = new CaveSimulationCoordinator(Team.sharded.id, capacity, proposal.names(), counts, Files.readAllBytes(input));
+            var ticket = coordinator.begin();
+            assertEquals(CaveInventoryLedger.CommitResult.invalid, coordinator.commit(ticket, proposal, new byte[]{1}));
+            assertArrayEquals(Files.readAllBytes(input), coordinator.begin().caveSnapshot());
+            assertEquals(CaveInventoryLedger.CommitResult.applied, coordinator.commit(ticket, proposal, Files.readAllBytes(output)));
+            assertArrayEquals(Files.readAllBytes(output), coordinator.begin().caveSnapshot());
+            assertTrue(coordinator.begin().counts()[CaveContent.amethyst.id] > 0);
             assertTrue(ledger.adjust(Items.copper.id, -10));
             assertEquals(CaveInventoryLedger.CommitResult.conflict, ledger.commit(base, proposal.counts()));
             assertEquals(0, ledger.snapshot().counts()[CaveContent.amethyst.id]);
@@ -145,6 +153,28 @@ class CaveSimulationWorkerTests{
             assertEquals(CaveInventoryLedger.CommitResult.applied, ledger.commit(retry, accepted.counts()));
             assertEquals(40, ledger.snapshot().counts()[Items.copper.id]);
             assertTrue(ledger.snapshot().counts()[CaveContent.amethyst.id] > 0);
+            SaveIO.load(new Fi(output2.toFile()));
+            state.set(State.playing);
+            int[] committed = ledger.snapshot().counts();
+            for(var item : content.items()) assertEquals(committed[item.id], Team.sharded.core().items.get(item), item.name);
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void mismatchedSnapshotHashProducesNoProposal() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareCave();
+            var ledger = new CaveInventoryLedger(Team.sharded.core().storageCapacity, new int[content.items().size]);
+            Path request = directory.resolve("bad-request.bin"), output = directory.resolve("bad-output.msav"), result = directory.resolve("bad-result.bin");
+            request(request, input, ledger.snapshot());
+            byte[] bytes = Files.readAllBytes(request);
+            Arrays.fill(bytes, bytes.length - 32, bytes.length, (byte)0);
+            Files.write(request, bytes);
+            assertNotEquals(0, runWorker(input, output, 10, request, result));
+            assertFalse(Files.exists(output));
+            assertFalse(Files.exists(result));
         }finally{
             Core.settings.put("experimental-caves", previous);
         }

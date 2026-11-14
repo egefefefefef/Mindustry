@@ -33,9 +33,10 @@ needs a consistent, versioned inventory at its start and must publish its result
 only if the surface has not changed that inventory meanwhile. Conflicting or
 failed steps must be rejected **and the entire cave step rolled back**; merging
 independent inventory deltas after the fact is insufficient for capacities,
-consumption, and conditional building behavior. `CaveInventoryLedger` is a
-small tested prototype of this version check; it is not connected to the game,
-does not isolate a world, and does not roll back a simulation.
+consumption, and conditional building behavior. `CaveInventoryLedger` and
+`CaveSimulationCoordinator` are tested prototypes of version checking and
+in-memory paired publication. They are not connected to the game and do not
+provide durable two-world commits or roll back an already-published simulation.
 
 Pausing, disabled features, worker termination, save/reload, map switching,
 capacity changes and content mismatch all need explicit handling. Save data

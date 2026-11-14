@@ -63,6 +63,17 @@ public final class CaveSimulationExchange{
         }
     }
 
+    public static byte[] digest(byte[] snapshot){
+        if(snapshot == null || snapshot.length == 0 || snapshot.length > CaveArchive.maxSnapshotBytes){
+            throw new IllegalArgumentException("Invalid cave snapshot size");
+        }
+        try{
+            return MessageDigest.getInstance("SHA-256").digest(snapshot);
+        }catch(NoSuchAlgorithmException impossible){
+            throw new IllegalStateException(impossible);
+        }
+    }
+
     public static byte[] digest(Path path) throws IOException{
         try{
             var md = MessageDigest.getInstance("SHA-256");
