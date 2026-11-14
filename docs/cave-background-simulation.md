@@ -16,10 +16,14 @@ for mods, settings, content IDs, native code or all platforms.
 
 `CaveSimulationWorker` is a separate-process prototype that loads one unpaired,
 non-modded cave snapshot and advances the real Java logic for a bounded number of
-fixed ticks before writing another snapshot. It is not packaged in the desktop
-application or connected to gameplay. It has no live inventory exchange,
-transaction rollback, crash recovery, pause coordination, or performance
-measurements. Passing its isolated test is not proof of full simulation parity.
+fixed ticks before writing another snapshot. An optional versioned inventory
+request and response identify items by name and bind both files to the input
+and output snapshots using SHA-256. These are uncommitted proposals; tests
+exercise discarding a stale result and retrying from the previous snapshot.
+The prototype is not packaged in the desktop application or connected to
+gameplay. It has no live inventory synchronization, atomic two-world commit,
+crash recovery, pause coordination, or performance measurements. Passing its
+isolated test is not proof of full simulation parity.
 
 ## Required transaction boundary
 

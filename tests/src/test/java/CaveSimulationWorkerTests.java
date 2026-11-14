@@ -7,13 +7,17 @@ import mindustry.core.GameState.State;
 import mindustry.game.Team;
 import mindustry.game.caves.CaveSaveStore;
 import mindustry.game.caves.CaveWorldTransfer;
+import mindustry.game.caves.CaveInventoryLedger;
+import mindustry.game.caves.CaveSimulationExchange;
 import mindustry.io.SaveIO;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.*;
 import java.nio.file.*;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.*;
@@ -30,13 +34,18 @@ class CaveSimulationWorkerTests{
     }
 
     private int runWorker(Path input, Path output, int steps) throws Exception{
+        return runWorker(input, output, steps, null, null);
+    }
+
+    private int runWorker(Path input, Path output, int steps, Path request, Path result) throws Exception{
         String classpath = System.getProperty("cave.worker.test.classpath");
         assertNotNull(classpath);
         String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
         Path log = directory.resolve("worker.log");
-        var process = new ProcessBuilder(java, "-cp", classpath, "mindustry.server.CaveSimulationWorker",
-            input.toString(), output.toString(), String.valueOf(steps), directory.resolve("worker-data").toString())
-            .redirectErrorStream(true).redirectOutput(log.toFile()).start();
+        var command = new ArrayList<>(List.of(java, "-cp", classpath, "mindustry.server.CaveSimulationWorker",
+            input.toString(), output.toString(), String.valueOf(steps), directory.resolve("worker-data").toString()));
+        if(request != null){ command.add(request.toString()); command.add(result.toString()); }
+        var process = new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile()).start();
         if(!process.waitFor(90, TimeUnit.SECONDS)){
             process.destroyForcibly();
             fail("Worker timed out: " + Files.readString(log));
@@ -82,6 +91,60 @@ class CaveSimulationWorkerTests{
             assertSame(Blocks.router, world.tile(69, 64).block());
             assertTrue(Team.sharded.core().items.get(CaveContent.amethyst) > 0, "Items must travel through the router");
             assertTrue(world.tile(74, 63).build.items.get(Items.coal) < 10, "Generator must consume fuel");
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    private void request(Path file, Path snapshot, CaveInventoryLedger.Snapshot base) throws Exception{
+        String[] names = new String[content.items().size];
+        for(var item : content.items()) names[item.id] = item.name;
+        var packet = new CaveSimulationExchange(CaveSimulationExchange.request, base.revision(), Team.sharded.id,
+            base.capacity(), names, base.counts(), CaveSimulationExchange.digest(snapshot));
+        try(var out = new DataOutputStream(Files.newOutputStream(file))){ packet.write(out); }
+    }
+
+    private CaveSimulationExchange response(Path file, Path snapshot) throws Exception{
+        CaveSimulationExchange result;
+        try(var in = new DataInputStream(Files.newInputStream(file))){
+            result = CaveSimulationExchange.read(in);
+            assertEquals(-1, in.read());
+        }
+        assertEquals(CaveSimulationExchange.result, result.kind());
+        assertArrayEquals(CaveSimulationExchange.digest(snapshot), result.snapshotHash());
+        return result;
+    }
+
+    @Test void workerProposesVersionedInventoryAndStaleResultIsDiscarded() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareCave();
+            int capacity = Team.sharded.core().storageCapacity;
+            int[] counts = new int[content.items().size];
+            counts[Items.copper.id] = 50;
+            var ledger = new CaveInventoryLedger(capacity, counts);
+            var base = ledger.snapshot();
+            Path request = directory.resolve("request.bin"), output = directory.resolve("proposal.msav"), result = directory.resolve("result.bin");
+            request(request, input, base);
+            assertEquals(0, runWorker(input, output, 1200, request, result));
+            var proposal = response(result, output);
+            assertEquals(base.revision(), proposal.revision());
+            assertTrue(proposal.counts()[CaveContent.amethyst.id] > 0);
+            assertEquals(50, proposal.counts()[Items.copper.id]);
+            assertEquals(0, Team.sharded.core().items.get(CaveContent.amethyst), "Proposal must not mutate the active world");
+            assertTrue(ledger.adjust(Items.copper.id, -10));
+            assertEquals(CaveInventoryLedger.CommitResult.conflict, ledger.commit(base, proposal.counts()));
+            assertEquals(0, ledger.snapshot().counts()[CaveContent.amethyst.id]);
+
+            var retry = ledger.snapshot();
+            Path request2 = directory.resolve("request2.bin"), output2 = directory.resolve("proposal2.msav"), result2 = directory.resolve("result2.bin");
+            request(request2, input, retry);
+            assertEquals(0, runWorker(input, output2, 1200, request2, result2));
+            var accepted = response(result2, output2);
+            assertEquals(retry.revision(), accepted.revision());
+            assertEquals(CaveInventoryLedger.CommitResult.applied, ledger.commit(retry, accepted.counts()));
+            assertEquals(40, ledger.snapshot().counts()[Items.copper.id]);
+            assertTrue(ledger.snapshot().counts()[CaveContent.amethyst.id] > 0);
         }finally{
             Core.settings.put("experimental-caves", previous);
         }
