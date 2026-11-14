@@ -78,33 +78,7 @@ public final class CaveSimulationWorker{
     }
 
     private static void run(Path input, Path output, Path data, int steps, Path requestFile, Path resultFile) throws Exception{
-        // The child has its own Arc globals and its own empty data directory.
-        Core.settings.setDataDirectory(new Fi(data.toFile()));
-        Vars.headless = true;
-        Vars.loadLocales = false;
-        Vars.net = new Net(null);
-        Vars.tree = new FileTree();
-        Vars.init();
-        Core.graphics = new MockGraphics(){
-            @Override public float getDeltaTime(){ return 1f / 60f; }
-        };
-        Time.setDeltaProvider(() -> 1f);
-        content.createBaseContent();
-        mods.loadScripts();
-        content.createModContent();
-        logic = new Logic();
-        netServer = new NetServer();
-        content.init();
-        if(mods.hasContentErrors()) throw new IllegalStateException("Worker content failed to initialize");
-
-        // Reject modded saves rather than silently substituting missing content.
-        var file = new Fi(input.toFile());
-        var meta = SaveIO.getMeta(SaveIO.getStream(file));
-        if(meta.mods.length != 0) throw new IllegalArgumentException("Modded saves are not supported by the prototype");
-        SaveIO.load(SaveIO.getStream(file), world.context);
-        if(!state.rules.caveInterior || state.isCampaign() || state.isEditor() || CaveSaveStore.instance.archive() != null){
-            throw new IllegalArgumentException("Expected an unpaired custom cave snapshot");
-        }
+        initializeWorld(input, data);
         CaveSimulationExchange request = null;
         CoreBuild exchangeCore = null;
         int originalCapacity = state.rules.caveStorageCapacity;
@@ -131,13 +105,7 @@ public final class CaveSimulationWorker{
             for(int i = 0; i < names.length; i++) exchangeCore.items.set(content.item(i), counts[i]);
         }
         state.set(State.playing);
-        for(int i = 0; i < steps; i++){
-            Time.updateGlobal();
-            asyncCore.begin();
-            logic.update();
-            asyncCore.end();
-        }
-        asyncCore.awaitWorldTasks();
+        runTicks(steps);
         if(exchangeCore != null){
             // Preserve the cave's configured capacity in its snapshot; the request
             // capacity is only the temporary shared limit during this step.
@@ -172,4 +140,46 @@ public final class CaveSimulationWorker{
             if(resultTemp != null) Files.deleteIfExists(resultTemp);
         }
     }
+    /** Initialize only in a fresh isolated JVM. */
+    static void initializeWorld(Path input, Path data) throws Exception{
+        // The child has its own Arc globals and its own empty data directory.
+        Core.settings.setDataDirectory(new Fi(data.toFile()));
+        Vars.headless = true;
+        Vars.loadLocales = false;
+        Vars.net = new Net(null);
+        Vars.tree = new FileTree();
+        Vars.init();
+        Core.graphics = new MockGraphics(){
+            @Override public float getDeltaTime(){ return 1f / 60f; }
+        };
+        Time.setDeltaProvider(() -> 1f);
+        content.createBaseContent();
+        mods.loadScripts();
+        content.createModContent();
+        logic = new Logic();
+        netServer = new NetServer();
+        content.init();
+        if(mods.hasContentErrors()) throw new IllegalStateException("Worker content failed to initialize");
+
+        // Reject modded saves rather than silently substituting missing content.
+        var file = new Fi(input.toFile());
+        var meta = SaveIO.getMeta(SaveIO.getStream(file));
+        if(meta.mods.length != 0) throw new IllegalArgumentException("Modded saves are not supported by the prototype");
+        SaveIO.load(SaveIO.getStream(file), world.context);
+        if(!state.rules.caveInterior || state.isCampaign() || state.isEditor() || CaveSaveStore.instance.archive() != null){
+            throw new IllegalArgumentException("Expected an unpaired custom cave snapshot");
+        }
+    }
+
+    /** Advance the actual game logic with fixed ticks in the isolated world. */
+    static void runTicks(int steps){
+        for(int i = 0; i < steps; i++){
+            Time.updateGlobal();
+            asyncCore.begin();
+            logic.update();
+            asyncCore.end();
+        }
+        asyncCore.awaitWorldTasks();
+    }
+
 }

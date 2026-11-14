@@ -19,7 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import static mindustry.Vars.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -158,6 +158,98 @@ class CaveSimulationWorkerTests{
             int[] committed = ledger.snapshot().counts();
             for(var item : content.items()) assertEquals(committed[item.id], Team.sharded.core().items.get(item), item.name);
         }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    private record PersistentResult(int[] counts, byte[] snapshot){}
+
+    private Process startPersistent(Path input, Path log) throws Exception{
+        String classpath = System.getProperty("cave.worker.test.classpath");
+        assertNotNull(classpath);
+        String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        return new ProcessBuilder(java, "-cp", classpath, "mindustry.server.CavePersistentService",
+            input.toString(), directory.resolve("persistent-data").toString()).redirectError(log.toFile()).start();
+    }
+
+    private void handshake(DataInputStream in, Path snapshot, String[] expectedNames, int capacity) throws Exception{
+        assertEquals(mindustry.server.CavePersistentService.magic, in.readInt());
+        assertEquals(mindustry.server.CavePersistentService.protocolVersion, in.readInt());
+        assertEquals(capacity, in.readInt());
+        assertEquals(expectedNames.length, in.readInt());
+        for(String name : expectedNames) assertEquals(name, in.readUTF());
+        byte[] hash = new byte[32]; in.readFully(hash);
+        assertArrayEquals(CaveSimulationExchange.digest(snapshot), hash);
+    }
+
+    private void sendCommand(DataOutputStream out, int command, long id, int capacity, int steps, int[] counts) throws Exception{
+        out.writeByte(command); out.writeLong(id); out.writeInt(Team.sharded.id); out.writeInt(capacity); out.writeInt(counts.length);
+        if(command == mindustry.server.CavePersistentService.step) out.writeInt(steps);
+        for(int amount : counts) out.writeInt(amount);
+        out.flush();
+    }
+
+    private int[] readCounts(DataInputStream in, int command, long id, int expectedCount) throws Exception{
+        assertEquals(command, in.readUnsignedByte());
+        assertEquals(id, in.readLong());
+        assertEquals(expectedCount, in.readInt());
+        int[] counts = new int[expectedCount];
+        for(int i = 0; i < counts.length; i++) counts[i] = in.readInt();
+        return counts;
+    }
+
+    @Test void persistentProcessAdvancesRealWorldAcrossManyStepsAndCheckpoints() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        Process process = null;
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try{
+            Path input = prepareCave(), log = directory.resolve("persistent.log");
+            int capacity = Team.sharded.core().storageCapacity;
+            String[] names = new String[content.items().size];
+            int[] initial = new int[names.length];
+            for(var item : content.items()){
+                names[item.id] = item.name;
+                initial[item.id] = Team.sharded.core().items.get(item);
+            }
+            initial[Items.copper.id] = 50;
+            process = startPersistent(input, log);
+            Process child = process;
+            Future<PersistentResult> future = pool.submit(() -> {
+                try(var in = new DataInputStream(new BufferedInputStream(child.getInputStream()));
+                    var out = new DataOutputStream(new BufferedOutputStream(child.getOutputStream()))){
+                    handshake(in, input, names, capacity);
+                    int[] counts = initial.clone();
+                    for(int n = 0; n < 20; n++){
+                        if(n == 10) counts[Items.copper.id] = 40; // surface spent 10
+                        sendCommand(out, mindustry.server.CavePersistentService.step, n, capacity, 60, counts);
+                        counts = readCounts(in, mindustry.server.CavePersistentService.step, n, names.length);
+                        assertEquals(n < 10 ? 50 : 40, counts[Items.copper.id]);
+                    }
+                    assertTrue(counts[CaveContent.amethyst.id] > 0, "Real router and powered drill must work across steps");
+                    sendCommand(out, mindustry.server.CavePersistentService.checkpoint, 20, capacity, 0, counts);
+                    int[] checkpointCounts = readCounts(in, mindustry.server.CavePersistentService.checkpoint, 20, names.length);
+                    assertArrayEquals(counts, checkpointCounts);
+                    int length = in.readInt();
+                    assertTrue(length > 0 && length <= mindustry.game.caves.CaveArchive.maxSnapshotBytes);
+                    byte[] snapshot = new byte[length]; in.readFully(snapshot);
+                    out.writeByte(mindustry.server.CavePersistentService.quit); out.flush();
+                    assertEquals(mindustry.server.CavePersistentService.quit, in.readUnsignedByte());
+                    return new PersistentResult(counts, snapshot);
+                }
+            });
+            PersistentResult result = future.get(90, TimeUnit.SECONDS);
+            assertTrue(process.waitFor(10, TimeUnit.SECONDS));
+            assertEquals(0, process.exitValue(), Files.readString(log));
+            assertEquals(0, Team.sharded.core().items.get(CaveContent.amethyst), "Child must not mutate parent globals");
+            Path output = directory.resolve("persistent-output.msav");
+            Files.write(output, result.snapshot());
+            SaveIO.load(new Fi(output.toFile()));
+            state.set(State.playing);
+            for(var item : content.items()) assertEquals(result.counts()[item.id], Team.sharded.core().items.get(item), item.name);
+            assertTrue(world.tile(74, 63).build.items.get(Items.coal) < 10, "Real generator must consume fuel");
+        }finally{
+            if(process != null && process.isAlive()) process.destroyForcibly();
+            pool.shutdownNow();
             Core.settings.put("experimental-caves", previous);
         }
     }
