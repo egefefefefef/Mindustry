@@ -47,7 +47,7 @@ public final class CaveEntrances{
 
     private static boolean place(int x, int y, mindustry.game.Team team){
         Tile tile = world.tile(x, y);
-        if(tile == null || tile.block() != Blocks.air || tile.overlay() != Blocks.air || tile.floor().isLiquid) return false;
+        if(tile == null || tile.block() != Blocks.air || tile.overlay() != Blocks.air || !tile.floor().hasSurface()) return false;
         tile.setBlock(CaveContent.cavePortal, team);
         return true;
     }

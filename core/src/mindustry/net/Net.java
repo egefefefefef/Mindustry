@@ -188,6 +188,11 @@ public class Net{
      * Host a server at an address.
      */
     public void host(int port) throws IOException{
+        // The dormant world is deliberately absent from network snapshots. Do not
+        // host a paired save where another player could alter its shared inventory.
+        if(mindustry.game.caves.CaveSaveStore.instance.archive() != null){
+            throw new IOException("Paired cave worlds are only supported in local single-player games.");
+        }
         provider.hostServer(port);
         active = true;
         server = true;

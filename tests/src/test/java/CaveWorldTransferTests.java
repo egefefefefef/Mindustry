@@ -165,6 +165,15 @@ class CaveWorldTransferTests{
     }
 
     @Test
+    void pairedSaveCannotBeHosted(){
+        prepareTwoWorlds();
+        assertThrows(IOException.class, () -> net.host(6567));
+        assertFalse(net.active());
+        assertNotNull(store.archive());
+        assertSame(Blocks.copperWall, world.tile(5, 5).block());
+    }
+
+    @Test
     void editorAndNetworkCannotSwitchWorlds() throws Exception{
         prepareTwoWorlds();
         state.rules.editor = true;

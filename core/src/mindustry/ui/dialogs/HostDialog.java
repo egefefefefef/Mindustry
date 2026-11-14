@@ -86,6 +86,10 @@ public class HostDialog extends BaseDialog{
     }
 
     public void runHost(){
+        if(mindustry.game.caves.CaveSaveStore.instance.archive() != null){
+            ui.showInfo("@caves.nohosting");
+            return;
+        }
         ui.loadfrag.show("@hosting");
         Time.runTask(5f, () -> {
             try{

@@ -87,6 +87,22 @@ Post feature requests and feedback [here](https://github.com/Anuken/Mindustry-Su
 
 ### Experimental features
 
+**Caves** are an experimental feature in the current branch, not in the
+published v1.3 release. For a local single-player custom game, turn on
+**Settings → Experimental features → Caves** and enable **Generate a cave
+entrance** in the custom-game rules. The entrance appears on unoccupied dry
+ground near the player's core; click it to enter and click the cave exit to
+return. If no suitable ground is found nearby, no entrance is placed. The
+inactive world is paused. The two worlds share the core inventory; the cave's
+storage limit is fixed to the surface core's capacity when the cave is created.
+Resources and structures are saved with the game when it is saved or autosaved;
+a transition alone is not a disk save. The new ores can be mined with a laser
+drill or better. Disabling either switch prevents entering again, but still
+allows an existing cave to be exited. Caves are not available in campaign,
+multiplayer or the editor. A save containing paired cave worlds cannot be
+hosted for multiplayer, even after returning to the surface. Back up important
+saves before testing.
+
 Open **Settings → Experimental features** to enable the optional automatic
 weather cycle for both local custom games and campaign. The toggle affects the
 current local game as well as subsequently loaded worlds. Old custom saves may

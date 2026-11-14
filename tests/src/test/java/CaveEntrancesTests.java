@@ -4,6 +4,7 @@ import mindustry.content.CaveContent;
 import mindustry.core.GameState.State;
 import mindustry.game.Team;
 import mindustry.game.caves.CaveEntrances;
+import mindustry.world.blocks.environment.Floor;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,23 @@ class CaveEntrancesTests{
     }
 
     @Test
+    void voidAndWaterAreNotDryGround(){
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Core.settings.put("experimental-caves", true);
+            state.rules.caves = true;
+            for(int y = 0; y < world.height(); y++) for(int x = 0; x < world.width(); x++){
+                var tile = world.tile(x, y);
+                if(tile.block() == Blocks.air) tile.setFloor((Floor)((x & 1) == 0 ? Blocks.space : Blocks.water));
+            }
+            CaveEntrances.update();
+            assertEquals(0, portals());
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test
     void needsBothSwitchesAndNeverReplacesAnExistingBuilding(){
         boolean previous = Core.settings.getBool("experimental-caves", false);
         try{
@@ -53,7 +71,7 @@ class CaveEntrancesTests{
                 var tile = world.tile(x, y);
                 if(tile.block() == CaveContent.cavePortal){
                     assertNotNull(tile.build, "Portal must have a clickable building entity");
-                    assertFalse(tile.floor().isLiquid);
+                    assertTrue(tile.floor().hasSurface());
                     assertSame(Blocks.air, tile.overlay());
                 }
             }
