@@ -18,7 +18,7 @@ public class CavePersistentTestChild{
         var in = new DataInputStream(new BufferedInputStream(System.in));
         int command = in.readUnsignedByte(); long id = in.readLong();
         in.readInt(); in.readInt(); int count = in.readInt();
-        if(command == CavePersistentProtocol.step) in.readInt();
+        if(command == CavePersistentProtocol.step || command == CavePersistentProtocol.stepCheckpoint) in.readInt();
         for(int i = 0; i < count; i++) in.readInt();
         if(mode.equals("hang-step")){ Thread.sleep(30000); return; }
         if(mode.equals("bad-checkpoint")){

@@ -9,6 +9,7 @@ import mindustry.game.caves.CaveSaveStore;
 import mindustry.game.caves.CaveArchive;
 import mindustry.game.caves.CaveBackground;
 import mindustry.game.caves.CaveLiveBridge;
+import mindustry.game.caves.CavePairedBridge;
 import mindustry.game.caves.CaveWorldTransfer;
 import mindustry.game.caves.CaveInventoryLedger;
 import mindustry.game.caves.CavePersistentClient;
@@ -364,6 +365,113 @@ class CaveSimulationWorkerTests{
                 assertEquals(40, surfaceCore.items.get(Items.copper), "Conflicting surface spend must survive");
                 assertTrue(bridge.failed());
                 assertThrows(IOException.class, bridge::checkpoint);
+            }
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void pairedStepsSurviveWorkerKillRestartSaveAndTravel() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareCave();
+            CaveWorldTransfer.travel();
+            CaveBackground.instance.setPlan(null);
+            Files.write(input, CaveSaveStore.instance.archive().inactiveWorld());
+            Team.sharded.core().items.set(Items.copper, 50);
+            try(var client = launchRealClient(input);
+                var bridge = new CavePairedBridge(client, () -> Team.sharded.core(), Team.sharded.id)){
+                state.set(State.paused);
+                var pausedArchive = CaveSaveStore.instance.archive();
+                assertThrows(IllegalStateException.class, () -> bridge.step(60));
+                assertSame(pausedArchive, CaveSaveStore.instance.archive());
+                assertFalse(bridge.failed());
+                state.set(State.playing);
+                for(int i = 0; i < 20; i++){
+                    if(i == 10) Team.sharded.core().items.set(Items.copper, 40);
+                    bridge.step(60);
+                }
+                assertTrue(Team.sharded.core().items.get(CaveContent.amethyst) > 0);
+                var committed = CaveSaveStore.instance.archive();
+                int produced = Team.sharded.core().items.get(CaveContent.amethyst);
+                var field = CavePersistentClient.class.getDeclaredField("process");
+                field.setAccessible(true);
+                Process process = (Process)field.get(client);
+                process.destroyForcibly();
+                assertTrue(process.waitFor(10, TimeUnit.SECONDS));
+                assertThrows(IOException.class, () -> bridge.step(60));
+                assertTrue(bridge.failed());
+                assertSame(committed, CaveSaveStore.instance.archive());
+                assertEquals(produced, Team.sharded.core().items.get(CaveContent.amethyst));
+            }
+            // A fresh worker starts from the last *published* cave, not an old
+            // snapshot that would duplicate already credited production.
+            Path restart = directory.resolve("restart.msav");
+            Files.write(restart, CaveSaveStore.instance.archive().inactiveWorld());
+            try(var client = launchRealClient(restart);
+                var bridge = new CavePairedBridge(client, () -> Team.sharded.core(), Team.sharded.id)){
+                Team.sharded.core().items.set(Items.copper, 35);
+                bridge.step(60);
+            }
+            int produced = Team.sharded.core().items.get(CaveContent.amethyst);
+            Fi save = new Fi(directory.resolve("paired-recovery.msav").toFile());
+            SaveIO.save(save);
+            logic.reset();
+            SaveIO.load(save);
+            state.set(State.playing);
+            assertEquals(produced, Team.sharded.core().items.get(CaveContent.amethyst));
+            assertEquals(35, Team.sharded.core().items.get(Items.copper));
+            CaveWorldTransfer.travel();
+            assertSame(Blocks.router, world.tile(69, 64).block());
+            assertTrue(world.tile(74, 63).build.items.get(Items.coal) < 10);
+            assertEquals(produced, Team.sharded.core().items.get(CaveContent.amethyst));
+            assertEquals(35, Team.sharded.core().items.get(Items.copper));
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void pairedStepRejectsConflictWithoutPublishingSnapshotOrWorkerCounts() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareCave();
+            CaveWorldTransfer.travel();
+            CaveBackground.instance.setPlan(null);
+            Files.write(input, CaveSaveStore.instance.archive().inactiveWorld());
+            var surface = Team.sharded.core();
+            surface.items.set(Items.copper, 50);
+            var committed = CaveSaveStore.instance.archive();
+            int[] calls = {0};
+            try(var client = launchRealClient(input);
+                var bridge = new CavePairedBridge(client, () -> {
+                    if(++calls[0] == 2) surface.items.set(Items.copper, 40);
+                    return surface;
+                }, Team.sharded.id)){
+                assertThrows(IOException.class, () -> bridge.step(60));
+                assertTrue(bridge.failed());
+                assertSame(committed, CaveSaveStore.instance.archive());
+                assertEquals(40, surface.items.get(Items.copper));
+                assertEquals(0, surface.items.get(CaveContent.amethyst));
+                assertThrows(IOException.class, () -> bridge.step(60));
+            }
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void pairedBridgeRejectsWorkerLoadedFromDifferentSnapshot() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareCave();
+            CaveWorldTransfer.travel();
+            CaveBackground.instance.setPlan(null);
+            Files.write(input, CaveSaveStore.instance.archive().inactiveWorld());
+            var archive = CaveSaveStore.instance.archive();
+            byte[] wrong = archive.inactiveWorld();
+            wrong[wrong.length / 2] ^= 1;
+            CaveSaveStore.instance.setArchive(new CaveArchive(false, archive.seed(), wrong));
+            try(var client = launchRealClient(input)){
+                assertThrows(IllegalArgumentException.class, () -> new CavePairedBridge(client, () -> Team.sharded.core(), Team.sharded.id));
             }
         }finally{
             Core.settings.put("experimental-caves", previous);

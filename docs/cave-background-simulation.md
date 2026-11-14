@@ -39,6 +39,17 @@ visible pauses and is not suitable for production gameplay. Integration tests
 manually disable the approximate model and publish a checkpoint before a normal
 save and travel; no production path does so yet.
 
+`CavePairedBridge` is another synchronous experiment. Its combined worker
+step/checkpoint response lets it allocate the next archive before publishing
+both it and the corresponding core counts on the owning thread. It refuses a
+mismatched initial snapshot, a concurrent change or an active approximate
+plan; a failed step leaves the last published archive available for a worker
+restart. This only holds when all world, save and archive access is serialized
+on the owning thread. It is not a durable disk transaction, does not deal with
+unsaved progress after a game crash, and does not yet handle lifecycle, worker
+launch, asynchronous scheduling, or performance. In particular, making a full
+snapshot every step can be expensive and has not been measured.
+
 The worker classes are packaged in the desktop application but neither prototype
 is launched or connected to gameplay. There is no production live inventory
 synchronization, atomic two-world disk commit, crash recovery, pause

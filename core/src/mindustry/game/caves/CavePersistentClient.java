@@ -18,12 +18,14 @@ public final class CavePersistentClient implements AutoCloseable{
     private final long timeoutMillis;
     private final int team, itemCount;
     private final String[] itemNames;
+    private final byte[] initialHash;
     private int caveCapacity;
     private long nextId;
     private boolean closed;
 
-    private CavePersistentClient(Process process, long timeoutMillis, int team, String[] itemNames){
+    private CavePersistentClient(Process process, long timeoutMillis, int team, String[] itemNames, byte[] initialHash){
         this.process = process;
+        this.initialHash = initialHash.clone();
         this.timeoutMillis = timeoutMillis;
         this.team = team;
         this.itemNames = itemNames.clone();
@@ -51,7 +53,7 @@ public final class CavePersistentClient implements AutoCloseable{
         for(String name : names) if(name == null || name.isEmpty() || name.length() > 128) throw new IllegalArgumentException("Invalid item name");
         byte[] hash = CaveSimulationExchange.digest(snapshot);
         Process process = new ProcessBuilder(command).redirectError(stderrLog.toFile()).start();
-        var client = new CavePersistentClient(process, timeoutMillis, team, names);
+        var client = new CavePersistentClient(process, timeoutMillis, team, names, hash);
         try{
             client.call(() -> {
                 if(client.input.readInt() != CavePersistentProtocol.magic || client.input.readInt() != CavePersistentProtocol.version){
@@ -76,6 +78,16 @@ public final class CavePersistentClient implements AutoCloseable{
 
     boolean matchesIdentity(int team, String[] names){
         return this.team == team && Arrays.equals(itemNames, names);
+    }
+
+    synchronized boolean matchesInitialSnapshot(byte[] snapshot){
+        return !closed && nextId == 0 && snapshot != null && Arrays.equals(initialHash, CaveSimulationExchange.digest(snapshot));
+    }
+
+    /** Advance and capture the resulting world and inventory at one worker boundary. */
+    public synchronized Checkpoint stepCheckpoint(int ticks, int capacity, int[] counts) throws IOException{
+        if(ticks < 1 || ticks > CavePersistentProtocol.maxStepTicks) throw new IllegalArgumentException("Invalid cave step size");
+        return exchange(CavePersistentProtocol.stepCheckpoint, ticks, capacity, counts);
     }
 
     /** Counts after one sequential real-world step. The input array is never mutated. */
@@ -108,7 +120,7 @@ public final class CavePersistentClient implements AutoCloseable{
         long id = nextId++;
         return call(() -> {
             output.writeByte(command); output.writeLong(id); output.writeInt(team); output.writeInt(capacity); output.writeInt(itemCount);
-            if(command == CavePersistentProtocol.step) output.writeInt(ticks);
+            if(command == CavePersistentProtocol.step || command == CavePersistentProtocol.stepCheckpoint) output.writeInt(ticks);
             for(int count : counts) output.writeInt(count);
             output.flush();
             if(input.readUnsignedByte() != command || input.readLong() != id || input.readInt() != itemCount){
@@ -118,7 +130,7 @@ public final class CavePersistentClient implements AutoCloseable{
             for(int i = 0; i < itemCount; i++) result[i] = input.readInt();
             try{ validateCounts(result, capacity); }catch(IllegalArgumentException invalid){ throw new IOException("Invalid cave response inventory", invalid); }
             byte[] snapshot = null;
-            if(command == CavePersistentProtocol.checkpoint){
+            if(command == CavePersistentProtocol.checkpoint || command == CavePersistentProtocol.stepCheckpoint){
                 int length = input.readInt();
                 if(length <= 0 || length > CaveArchive.maxSnapshotBytes) throw new IOException("Invalid cave checkpoint size");
                 snapshot = new byte[length]; input.readFully(snapshot);

@@ -39,6 +39,13 @@ class CavePersistentClientTests{
         }
     }
 
+    @Test void rejectsOversizedPairedStepWithoutAllocatingIt() throws Exception{
+        try(var client = launch("bad-checkpoint")){
+            assertThrows(IOException.class, () -> client.stepCheckpoint(1, 10, new int[]{3, 2}));
+            assertThrows(IOException.class, () -> client.step(1, 10, new int[]{3, 2}));
+        }
+    }
+
     @Test void rejectsOversizedCheckpointWithoutAllocatingIt() throws Exception{
         try(var client = launch("bad-checkpoint")){
             assertThrows(IOException.class, () -> client.checkpoint(10, new int[]{3, 2}));

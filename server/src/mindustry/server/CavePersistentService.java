@@ -80,13 +80,15 @@ public final class CavePersistentService{
             int command = in.read();
             if(command == -1) return;
             if(command == quit){ out.writeByte(quit); out.flush(); return; }
-            if(command != step && command != checkpoint) throw new IOException("Unknown cave command");
+            if(command != step && command != checkpoint && command != CavePersistentProtocol.stepCheckpoint) throw new IOException("Unknown cave command");
+            boolean advances = command == step || command == CavePersistentProtocol.stepCheckpoint;
+            boolean snapshots = command == checkpoint || command == CavePersistentProtocol.stepCheckpoint;
             long id = in.readLong();
             int team = in.readInt(), capacity = in.readInt(), count = in.readInt();
-            int steps = command == step ? in.readInt() : 0;
+            int steps = advances ? in.readInt() : 0;
             if(id < 0 || id <= lastId || team < 0 || team > 255 || (activeTeam != -1 && team != activeTeam) ||
                 capacity < 1 || capacity > originalCapacity || count != content.items().size ||
-                (command == step && (steps < 1 || steps > maxStepTicks))){
+                (advances && (steps < 1 || steps > maxStepTicks))){
                 throw new IOException("Invalid cave command header");
             }
             int[] inventory = new int[count]; long total = 0;
@@ -104,7 +106,7 @@ public final class CavePersistentService{
             core.storageCapacity = capacity;
             core.items.clear();
             for(int i = 0; i < count; i++) core.items.set(content.item(i), inventory[i]);
-            if(command == step) CaveSimulationWorker.runTicks(steps);
+            if(advances) CaveSimulationWorker.runTicks(steps);
             if(Team.get(team).core() != core) throw new IOException("Cave core changed during simulation");
             int[] result = new int[count]; total = 0;
             for(int i = 0; i < count; i++){
@@ -114,7 +116,7 @@ public final class CavePersistentService{
             }
             if(total > Integer.MAX_VALUE) throw new IOException("Produced inventory overflow");
             byte[] snapshot = null;
-            if(command == checkpoint){
+            if(snapshots){
                 // Snapshot preserves the cave's configured limit rather than the
                 // possibly smaller temporary shared limit used for this step.
                 state.rules.caveStorageCapacity = originalCapacity;
