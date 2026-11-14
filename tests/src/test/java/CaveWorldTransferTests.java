@@ -72,6 +72,57 @@ class CaveWorldTransferTests{
     }
 
     @Test
+    void regularSaveKeepsBothWorldsAndSaveSlotThroughReload(){
+        prepareTwoWorlds();
+        var slot = control.saves.addSave("cave-transition-test");
+        try{
+            assertSame(slot, control.saves.getCurrent());
+            CaveWorldTransfer.travel();
+            assertSame(slot, control.saves.getCurrent(), "World switch must not detach the current save");
+            Team.sharded.core().items.set(Items.copper, 55);
+            world.tile(6, 6).setBlock(Blocks.graphitePress, Team.sharded);
+            slot.save();
+            logic.reset();
+            slot.load();
+            state.set(State.playing);
+            assertTrue(store.archive().inCave());
+            assertSame(Blocks.graphitePress, world.tile(6, 6).block());
+            assertEquals(55, Team.sharded.core().items.get(Items.copper));
+            CaveWorldTransfer.travel();
+            assertSame(slot, control.saves.getCurrent());
+            assertSame(Blocks.copperWall, world.tile(5, 5).block());
+            assertEquals(55, Team.sharded.core().items.get(Items.copper));
+            slot.save();
+            slot.load();
+            state.set(State.playing);
+            CaveWorldTransfer.travel();
+            assertSame(Blocks.graphitePress, world.tile(6, 6).block());
+            assertEquals(55, Team.sharded.core().items.get(Items.copper));
+        }finally{
+            slot.delete();
+        }
+    }
+
+    @Test
+    void editorAndNetworkCannotSwitchWorlds() throws Exception{
+        prepareTwoWorlds();
+        state.rules.editor = true;
+        assertThrows(IllegalStateException.class, CaveWorldTransfer::travel);
+        assertSame(Blocks.copperWall, world.tile(5, 5).block());
+        state.rules.editor = false;
+        var active = net.getClass().getDeclaredField("active");
+        active.setAccessible(true);
+        active.setBoolean(net, true);
+        try{
+            assertThrows(IllegalStateException.class, CaveWorldTransfer::travel);
+            assertSame(Blocks.copperWall, world.tile(5, 5).block());
+            assertFalse(store.archive().inCave());
+        }finally{
+            active.setBoolean(net, false);
+        }
+    }
+
+    @Test
     void corruptedDestinationRollsBackWorldAndArchive(){
         world.tile(5, 5).setBlock(Blocks.copperWall, Team.sharded);
         Team.sharded.core().items.set(Items.copper, 75);
