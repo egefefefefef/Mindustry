@@ -8,7 +8,7 @@ import mindustry.world.Block;
 import mindustry.world.blocks.environment.OreBlock;
 import mindustry.world.blocks.production.Drill;
 import mindustry.world.meta.BuildVisibility;
-import mindustry.world.meta.Category;
+import mindustry.type.Category;
 
 import static mindustry.Vars.*;
 import static mindustry.type.ItemStack.with;
