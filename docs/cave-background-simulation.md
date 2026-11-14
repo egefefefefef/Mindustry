@@ -75,7 +75,12 @@ conflicts or a pause cancel the outstanding worker without consuming its ticks,
 and a fresh session can retry from the last published archive. It is not wired
 to the game clock, worker startup, lifecycle events, or the save format.
 Frequent surface changes can repeatedly invalidate work; a production scheduler
-must prove eventual progress without dropping time or blocking play.
+must prove eventual progress without dropping time or blocking play. Retrying an
+old cave interval against a newer surface inventory orders that entire interval
+after the surface changes, so it is not necessarily equivalent to concurrent
+shared-resource behavior. Exact interleaving needs a defined timeline, such as
+resource-operation logging/replay or another coordination scheme, before this
+can be enabled as a full simulation.
 
 The worker classes are packaged in the desktop application but neither prototype
 is launched or connected to gameplay. There is no production live inventory
