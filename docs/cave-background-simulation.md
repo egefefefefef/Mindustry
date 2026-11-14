@@ -70,9 +70,12 @@ semantics remain unresolved; the item revision's performance cost is unmeasured.
 `CaveTickBudget` is a separate, game-thread-only accounting prototype for
 fractional elapsed ticks and bounded step reservations. Failed or cancelled
 reservations keep their ticks, and a budget snapshot includes in-flight ticks
-for retry. It is not wired to the async bridge, the game clock, or the save
-format. Frequent surface changes can repeatedly invalidate work; a production
-scheduler must prove eventual progress without dropping time or blocking play.
+for retry. `CaveAsyncScheduler` now combines the budget and the async bridge:
+conflicts or a pause cancel the outstanding worker without consuming its ticks,
+and a fresh session can retry from the last published archive. It is not wired
+to the game clock, worker startup, lifecycle events, or the save format.
+Frequent surface changes can repeatedly invalidate work; a production scheduler
+must prove eventual progress without dropping time or blocking play.
 
 The worker classes are packaged in the desktop application but neither prototype
 is launched or connected to gameplay. There is no production live inventory

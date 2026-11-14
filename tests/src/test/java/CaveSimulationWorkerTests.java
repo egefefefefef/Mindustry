@@ -16,6 +16,8 @@ import mindustry.game.caves.CaveBackground;
 import mindustry.game.caves.CaveLiveBridge;
 import mindustry.game.caves.CavePairedBridge;
 import mindustry.game.caves.CaveAsyncBridge;
+import mindustry.game.caves.CaveAsyncScheduler;
+import mindustry.game.caves.CaveTickBudget;
 import mindustry.game.caves.CaveWorldTransfer;
 import mindustry.game.caves.CaveInventoryLedger;
 import mindustry.game.caves.CavePersistentClient;
@@ -694,6 +696,65 @@ class CaveSimulationWorkerTests{
                 state.set(State.paused);
                 assertThrows(IOException.class, () -> awaitAsync(bridge));
                 assertTrue(bridge.failed());
+                assertSame(committed, CaveSaveStore.instance.archive());
+            }
+        }finally{
+            state.set(State.playing);
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void schedulerRetriesAllUncommittedTicksAfterInventoryConflict() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareSurfaceArchive();
+            var surface = Team.sharded.core();
+            surface.items.set(Items.copper, 50);
+            CaveTickBudget.Snapshot retry;
+            var committed = CaveSaveStore.instance.archive();
+            try(var client = launchRealClient(input);
+                var scheduler = new CaveAsyncScheduler(client, () -> Team.sharded.core(), Team.sharded.id, new CaveTickBudget.Snapshot(0, 0))){
+                assertEquals(CaveAsyncScheduler.Status.pending, scheduler.update(1200.5, true));
+                surface.items.remove(Items.copper, 10);
+                surface.items.add(Items.copper, 10);
+                assertThrows(IOException.class, () -> scheduler.update(0, true));
+                retry = scheduler.snapshot();
+                assertEquals(1200, retry.ticks());
+                assertEquals(0.5, retry.fraction());
+                assertSame(committed, CaveSaveStore.instance.archive());
+            }
+            Files.write(input, CaveSaveStore.instance.archive().inactiveWorld());
+            try(var client = launchRealClient(input);
+                var scheduler = new CaveAsyncScheduler(client, () -> Team.sharded.core(), Team.sharded.id, retry)){
+                long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+                CaveAsyncScheduler.Status status;
+                do{
+                    status = scheduler.update(0, true);
+                    if(status == CaveAsyncScheduler.Status.pending) Thread.sleep(5);
+                }while(status == CaveAsyncScheduler.Status.pending && System.nanoTime() < deadline);
+                assertEquals(CaveAsyncScheduler.Status.idle, status);
+                assertEquals(0, scheduler.snapshot().ticks());
+                assertEquals(0.5, scheduler.snapshot().fraction());
+                assertEquals(50, surface.items.get(Items.copper));
+                assertTrue(surface.items.get(CaveContent.amethyst) > 0);
+            }
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void schedulerPauseCancelsOutstandingStepAndKeepsItsTicks() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareSurfaceArchive();
+            var committed = CaveSaveStore.instance.archive();
+            try(var client = launchRealClient(input);
+                var scheduler = new CaveAsyncScheduler(client, () -> Team.sharded.core(), Team.sharded.id, new CaveTickBudget.Snapshot(0, 0))){
+                assertEquals(CaveAsyncScheduler.Status.pending, scheduler.update(60.25, true));
+                state.set(State.paused);
+                assertEquals(CaveAsyncScheduler.Status.stopped, scheduler.update(30, false));
+                assertEquals(60, scheduler.snapshot().ticks());
+                assertEquals(0.25, scheduler.snapshot().fraction());
                 assertSame(committed, CaveSaveStore.instance.archive());
             }
         }finally{
