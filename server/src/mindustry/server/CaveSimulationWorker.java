@@ -1,7 +1,6 @@
 package mindustry.server;
 
 import arc.*;
-import arc.backend.headless.HeadlessApplication;
 import arc.files.Fi;
 import arc.mock.MockGraphics;
 import arc.util.Time;
@@ -57,7 +56,7 @@ public final class CaveSimulationWorker{
                     result.equals(output) || result.equals(request)))){
                 throw new IllegalArgumentException("Invalid snapshot, exchange, output path or step count");
             }
-            new HeadlessApplication(new ApplicationListener(){
+            new CaveWorkerApplication(new ApplicationListener(){
                 @Override public void init(){
                     try{
                         run(input, output, data, steps, request, result);
@@ -106,6 +105,7 @@ public final class CaveSimulationWorker{
         }
         state.set(State.playing);
         runTicks(steps);
+        prepareSnapshot();
         if(exchangeCore != null){
             // Preserve the cave's configured capacity in its snapshot; the request
             // capacity is only the temporary shared limit during this step.
@@ -174,12 +174,19 @@ public final class CaveSimulationWorker{
     /** Advance the actual game logic with fixed ticks in the isolated world. */
     static void runTicks(int steps){
         for(int i = 0; i < steps; i++){
-            Time.updateGlobal();
+            ((CaveWorkerApplication)Core.app).beginTick();
             asyncCore.begin();
             logic.update();
             asyncCore.end();
         }
         asyncCore.awaitWorldTasks();
+    }
+
+    static void prepareSnapshot(){
+        asyncCore.awaitWorldTasks();
+        ((CaveWorkerApplication)Core.app).prepareSnapshot();
+        asyncCore.awaitWorldTasks();
+        ((CaveWorkerApplication)Core.app).assertSnapshotReady();
     }
 
 }

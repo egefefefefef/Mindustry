@@ -53,6 +53,7 @@ runs:
         jar tf desktop/build/libs/Mindustry.jar > /tmp/mindustry-desktop-contents.txt
         grep -Fx 'mindustry/server/CavePersistentService.class' /tmp/mindustry-desktop-contents.txt
         grep -Fx 'mindustry/server/CaveSimulationWorker.class' /tmp/mindustry-desktop-contents.txt
+        grep -Fx 'mindustry/server/CaveWorkerApplication.class' /tmp/mindustry-desktop-contents.txt
         grep -Fx 'arc/backend/headless/HeadlessApplication.class' /tmp/mindustry-desktop-contents.txt
         set +e
         java -cp desktop/build/libs/Mindustry.jar mindustry.server.CavePersistentService > /tmp/cave-worker-smoke.log 2>&1

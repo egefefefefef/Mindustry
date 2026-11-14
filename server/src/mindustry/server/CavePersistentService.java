@@ -1,7 +1,6 @@
 package mindustry.server;
 
 import arc.ApplicationListener;
-import arc.backend.headless.HeadlessApplication;
 import mindustry.content.CaveContent;
 import mindustry.core.GameState.State;
 import mindustry.game.Team;
@@ -42,7 +41,7 @@ public final class CavePersistentService{
             if(!Files.isRegularFile(input) || Files.size(input) <= 0 || Files.size(input) > CaveArchive.maxSnapshotBytes){
                 throw new IllegalArgumentException("Invalid cave snapshot");
             }
-            new HeadlessApplication(new ApplicationListener(){
+            new CaveWorkerApplication(new ApplicationListener(){
                 @Override public void init(){
                     try{
                         CaveSimulationWorker.initializeWorld(input, data);
@@ -107,6 +106,7 @@ public final class CavePersistentService{
             core.items.clear();
             for(int i = 0; i < count; i++) core.items.set(content.item(i), inventory[i]);
             if(advances) CaveSimulationWorker.runTicks(steps);
+            if(snapshots) CaveSimulationWorker.prepareSnapshot();
             if(Team.get(team).core() != core) throw new IOException("Cave core changed during simulation");
             int[] result = new int[count]; total = 0;
             for(int i = 0; i < count; i++){

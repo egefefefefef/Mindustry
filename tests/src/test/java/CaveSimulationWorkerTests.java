@@ -4,6 +4,9 @@ import mindustry.content.Blocks;
 import mindustry.content.CaveContent;
 import mindustry.content.Items;
 import mindustry.content.Liquids;
+import mindustry.content.UnitTypes;
+import mindustry.gen.Groups;
+import mindustry.world.meta.Env;
 import mindustry.core.GameState.State;
 import mindustry.game.Team;
 import mindustry.game.caves.CaveSaveStore;
@@ -98,6 +101,27 @@ class CaveSimulationWorkerTests{
             assertSame(Blocks.router, world.tile(69, 64).block());
             assertTrue(Team.sharded.core().items.get(CaveContent.amethyst) > 0, "Items must travel through the router");
             assertTrue(world.tile(74, 63).build.items.get(Items.coal) < 10, "Generator must consume fuel");
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void isolatedWorkerRunsPostedUnitDestructionBeforeCheckpoint() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            prepareCave();
+            // Dagger cannot survive scorching environments. Its destruction is
+            // posted to the application queue, rather than executed in update().
+            var unit = UnitTypes.dagger.spawn(Team.sharded, 80 * tilesize, 80 * tilesize);
+            assertTrue(unit.isAdded());
+            state.rules.env = Env.terrestrial | Env.scorching;
+            Path input = directory.resolve("unit-input.msav"), output = directory.resolve("unit-output.msav");
+            Files.write(input, CaveSaveStore.instance.captureWorld());
+            assertEquals(0, runWorker(input, output, 3));
+            SaveIO.load(new Fi(output.toFile()));
+            state.set(State.playing);
+            assertEquals(0, Groups.unit.count(u -> u.type == UnitTypes.dagger),
+                "Deferred unit destruction must not disappear when the worker checkpoints");
         }finally{
             Core.settings.put("experimental-caves", previous);
         }
