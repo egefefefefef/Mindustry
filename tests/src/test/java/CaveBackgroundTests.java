@@ -1,5 +1,6 @@
 import arc.Core;
 import mindustry.content.Blocks;
+import mindustry.content.CaveContent;
 import mindustry.content.Items;
 import mindustry.core.GameState.State;
 import mindustry.game.Team;
@@ -82,6 +83,14 @@ class CaveBackgroundTests{
             background.advance(1000);
             int first = Team.sharded.core().items.get(Items.coal);
             assertTrue(first > 0);
+            state.set(State.paused);
+            background.advance(1000);
+            assertEquals(first, Team.sharded.core().items.get(Items.coal), "Paused games do not mine");
+            state.set(State.playing);
+            Core.settings.put("experimental-caves", false);
+            background.advance(1000);
+            assertEquals(first, Team.sharded.core().items.get(Items.coal), "Disabled caves do not mine");
+            Core.settings.put("experimental-caves", true);
             SaveIO.save(file);
             logic.reset();
             SaveIO.load(file);
@@ -100,6 +109,38 @@ class CaveBackgroundTests{
             Core.settings.put("experimental-caves", previous);
             file.delete();
             SaveIO.backupFileFor(file).delete();
+        }
+    }
+
+    @Test void solarPoweredLaserMinesAmethystInBackground(){
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Core.settings.put("experimental-caves", true);
+            state.rules.caves = true;
+            CaveWorldTransfer.createCave(4321);
+            for(int x = 66; x <= 76; x++) for(int y = 62; y <= 66; y++){
+                var tile = world.tile(x, y);
+                tile.setBlock(Blocks.air);
+                tile.setFloor(Blocks.stone.asFloor());
+                tile.setOverlay(Blocks.air);
+            }
+            for(int x = 71; x <= 73; x++) for(int y = 63; y <= 65; y++) world.tile(x, y).setOverlay(CaveContent.oreAmethyst);
+            for(int x = 66; x <= 70; x++) world.tile(x, 64).setBlock(Blocks.conveyor, Team.sharded, 2);
+            world.tile(72, 64).setBlock(Blocks.laserDrill, Team.sharded);
+            world.tile(75, 64).setBlock(Blocks.largeSolarPanel, Team.sharded);
+            DrillBuild drill = (DrillBuild)world.tile(72, 64).build;
+            drill.onProximityUpdate();
+            world.tile(75, 64).build.updateTile();
+            drill.warmup = 1f;
+            drill.efficiency = 1f;
+            assertSame(CaveContent.amethyst, drill.dominantItem);
+            assertEquals(1, CaveBackground.capture(Team.sharded).size(), "Solar-powered laser and belts should be supported");
+            CaveWorldTransfer.travel();
+            int before = Team.sharded.core().items.get(CaveContent.amethyst);
+            CaveBackground.instance.advance(1000);
+            assertTrue(Team.sharded.core().items.get(CaveContent.amethyst) > before);
+        }finally{
+            Core.settings.put("experimental-caves", previous);
         }
     }
 

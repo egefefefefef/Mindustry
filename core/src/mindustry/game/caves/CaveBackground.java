@@ -119,9 +119,18 @@ public final class CaveBackground implements CustomChunk{
                 if(facing == null) break;
                 int diff = Math.floorMod(facing.relativeTo(current.tile.x, current.tile.y) - current.rotation, 4);
                 if(diff == 2) break;
+                Building front = belt.front();
+                boolean competingSource = false;
+                for(Building neighbor : belt.proximity){
+                    if(neighbor != drill && neighbor != previous && neighbor != front && neighbor.team == drill.team && neighbor.block.outputsItems()){
+                        competingSource = true;
+                        break;
+                    }
+                }
+                if(competingSource) break;
                 rate = Math.min(rate, ((Conveyor)current.block).displayedSpeed / 60f);
                 previous = current;
-                current = belt.front();
+                current = front;
                 if(current == core) return rate;
             }
         }
