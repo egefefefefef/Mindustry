@@ -8,6 +8,7 @@ import mindustry.game.Team;
 import mindustry.game.caves.CaveSaveStore;
 import mindustry.game.caves.CaveWorldTransfer;
 import mindustry.game.caves.CaveInventoryLedger;
+import mindustry.game.caves.CavePersistentClient;
 import mindustry.game.caves.CaveSimulationCoordinator;
 import mindustry.game.caves.CaveSimulationExchange;
 import mindustry.io.SaveIO;
@@ -250,6 +251,47 @@ class CaveSimulationWorkerTests{
         }finally{
             if(process != null && process.isAlive()) process.destroyForcibly();
             pool.shutdownNow();
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void persistentClientChecksIdentityAndReturnsConsistentCheckpoint() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareCave(), log = directory.resolve("client-service.log");
+            int capacity = Team.sharded.core().storageCapacity;
+            String[] names = new String[content.items().size];
+            int[] counts = new int[names.length];
+            for(var item : content.items()){
+                names[item.id] = item.name;
+                counts[item.id] = Team.sharded.core().items.get(item);
+            }
+            String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+            var command = List.of(java, "-cp", System.getProperty("cave.worker.test.classpath"), "mindustry.server.CavePersistentService",
+                input.toString(), directory.resolve("client-data").toString());
+            try(var client = CavePersistentClient.launch(command, log, input, names, Team.sharded.id, 30000)){
+                assertEquals(capacity, client.caveCapacity());
+                assertThrows(IllegalArgumentException.class, () -> client.step(61, capacity, new int[names.length]));
+                counts[Items.copper.id] = 50;
+                for(int i = 0; i < 20; i++){
+                    if(i == 10) counts[Items.copper.id] = 40;
+                    counts = client.step(60, capacity, counts);
+                    assertEquals(i < 10 ? 50 : 40, counts[Items.copper.id]);
+                }
+                assertTrue(counts[CaveContent.amethyst.id] > 0);
+                var checkpoint = client.checkpoint(capacity, counts);
+                assertArrayEquals(counts, checkpoint.counts());
+                byte[] snapshot = checkpoint.snapshot();
+                assertTrue(snapshot.length > 0);
+                byte first = snapshot[0]; snapshot[0] ^= 1;
+                assertEquals(first, checkpoint.snapshot()[0], "Checkpoint must not expose mutable storage");
+                Path output = directory.resolve("client-checkpoint.msav");
+                Files.write(output, checkpoint.snapshot());
+                SaveIO.load(new Fi(output.toFile()));
+                state.set(State.playing);
+                for(var item : content.items()) assertEquals(counts[item.id], Team.sharded.core().items.get(item), item.name);
+            }
+        }finally{
             Core.settings.put("experimental-caves", previous);
         }
     }

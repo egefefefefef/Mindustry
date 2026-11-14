@@ -8,6 +8,7 @@ import mindustry.game.Team;
 import mindustry.game.caves.CaveArchive;
 import mindustry.game.caves.CaveSaveStore;
 import mindustry.game.caves.CaveSimulationExchange;
+import mindustry.game.caves.CavePersistentProtocol;
 import mindustry.world.blocks.storage.CoreBlock.CoreBuild;
 
 import java.io.*;
@@ -21,9 +22,9 @@ import static mindustry.Vars.*;
  * a caller must abort the whole session if it cannot apply the response.
  */
 public final class CavePersistentService{
-    public static final int magic = 0x43535631, protocolVersion = 1;
-    public static final int step = 1, checkpoint = 2, quit = 3;
-    private static final int maxStepTicks = 60;
+    public static final int magic = CavePersistentProtocol.magic, protocolVersion = CavePersistentProtocol.version;
+    public static final int step = CavePersistentProtocol.step, checkpoint = CavePersistentProtocol.checkpoint, quit = CavePersistentProtocol.quit;
+    private static final int maxStepTicks = CavePersistentProtocol.maxStepTicks;
 
     private CavePersistentService(){}
 
@@ -65,7 +66,7 @@ public final class CavePersistentService{
 
     private static void serve(DataInputStream in, DataOutputStream out, Path input) throws Exception{
         int originalCapacity = state.rules.caveStorageCapacity;
-        if(originalCapacity < 1 || content.items().size <= 0 || content.items().size > 4096){
+        if(originalCapacity < 1 || content.items().size <= 0 || content.items().size > CavePersistentProtocol.maxItems){
             throw new IllegalArgumentException("Invalid cave capacity or item count");
         }
         out.writeInt(magic); out.writeInt(protocolVersion); out.writeInt(originalCapacity);

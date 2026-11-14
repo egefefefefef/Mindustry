@@ -23,9 +23,11 @@ exercise discarding a stale result and retrying from the previous snapshot.
 `CavePersistentService` is a second test-only prototype that retains the real
 cave world in an isolated process across sequential commands instead of starting
 and loading a new JVM each step. It exchanges authoritative core counts and
-can return a checkpoint, but its commands are not rollbackable. The caller must
-abort the session if a response cannot be committed; it must never silently
-merge a stale response.
+can return a checkpoint, but its commands are not rollbackable. The prototype
+`CavePersistentClient` validates content identity and snapshot hash, bounds
+messages and response times, and discards the process on a failed request. The
+caller must abort the entire session if a response cannot be committed; it must
+never silently merge a stale response.
 
 Neither prototype is packaged in the desktop application or connected to
 gameplay. There is no live inventory synchronization, atomic two-world disk
