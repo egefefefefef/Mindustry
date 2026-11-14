@@ -7,6 +7,7 @@ import mindustry.content.Liquids;
 import mindustry.content.UnitTypes;
 import mindustry.gen.Groups;
 import mindustry.world.meta.Env;
+import mindustry.world.blocks.production.Drill.DrillBuild;
 import mindustry.core.GameState.State;
 import mindustry.game.Team;
 import mindustry.game.caves.CaveSaveStore;
@@ -430,6 +431,45 @@ class CaveSimulationWorkerTests{
                 assertTrue(bridge.failed());
                 assertThrows(IOException.class, bridge::checkpoint);
             }
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void repeatedPairedCheckpointsMatchUninterruptedWorkerForDrillAndPower() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareCave(), output = directory.resolve("uninterrupted.msav");
+            int capacity = Team.sharded.core().storageCapacity;
+            int[] counts = new int[content.items().size];
+            for(var item : content.items()) counts[item.id] = Team.sharded.core().items.get(item);
+            assertEquals(0, runWorker(input, output, 1200));
+            SaveIO.load(new Fi(output.toFile()));
+            state.set(State.playing);
+            int[] uninterrupted = new int[counts.length];
+            for(var item : content.items()) uninterrupted[item.id] = Team.sharded.core().items.get(item);
+            int fuel = world.tile(74, 63).build.items.get(Items.coal);
+            int routerItems = world.tile(69, 64).build.items.total();
+            var drill = (DrillBuild)world.tile(72, 64).build;
+            float progress = drill.progress, warmup = drill.warmup;
+            byte[] finalSnapshot = null;
+            try(var client = launchRealClient(input)){
+                for(int i = 0; i < 20; i++){
+                    var result = client.stepCheckpoint(60, capacity, counts);
+                    counts = result.counts();
+                    finalSnapshot = result.snapshot();
+                }
+            }
+            assertArrayEquals(uninterrupted, counts);
+            Path checkpoint = directory.resolve("repeated-checkpoints.msav");
+            Files.write(checkpoint, finalSnapshot);
+            SaveIO.load(new Fi(checkpoint.toFile()));
+            state.set(State.playing);
+            assertEquals(fuel, world.tile(74, 63).build.items.get(Items.coal));
+            assertEquals(routerItems, world.tile(69, 64).build.items.total());
+            drill = (DrillBuild)world.tile(72, 64).build;
+            assertEquals(progress, drill.progress, 0.0001f);
+            assertEquals(warmup, drill.warmup, 0.0001f);
         }finally{
             Core.settings.put("experimental-caves", previous);
         }
