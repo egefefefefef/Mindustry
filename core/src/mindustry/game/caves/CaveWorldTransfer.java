@@ -44,6 +44,9 @@ public final class CaveWorldTransfer{
             state.rules.waves = false;
             state.rules.attackMode = false;
             state.rules.pvp = false;
+            // Surface map bounds and space environments do not describe the new underground map.
+            state.rules.limitMapArea = false;
+            state.rules.env = defaultEnv;
             state.rules.weatherCycle = false;
             state.rules.caveInterior = true;
             state.rules.weather.clear();

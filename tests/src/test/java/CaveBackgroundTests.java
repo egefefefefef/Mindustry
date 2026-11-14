@@ -46,7 +46,15 @@ class CaveBackgroundTests{
         try{
             Core.settings.put("experimental-caves", true);
             state.rules.caves = true;
+            state.rules.limitMapArea = true;
+            state.rules.limitX = 0;
+            state.rules.limitY = 0;
+            state.rules.limitWidth = 1;
+            state.rules.limitHeight = 1;
+            state.rules.env = mindustry.world.meta.Env.space;
             CaveWorldTransfer.createCave(1234);
+            assertFalse(state.rules.limitMapArea, "Surface bounds must not disable cave buildings");
+            assertEquals(defaultEnv, state.rules.env);
             DrillBuild drill = prepareDrill(true);
             assertTrue(drill.enabled, "Drill must be enabled");
             assertFalse(drill.block.hasPower, "Mechanical drill should not require power");
