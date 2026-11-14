@@ -445,6 +445,7 @@ project(":tests"){
 
     dependencies{
         testImplementation project(":core")
+        testImplementation project(":server")
         testImplementation "org.junit.jupiter:junit-jupiter-params:5.7.1"
         testImplementation "org.junit.jupiter:junit-jupiter-api:5.7.1"
         testImplementation arcModule("backends:backend-headless")
@@ -465,6 +466,7 @@ project(":tests"){
         jvmArgs = ["-XX:+HeapDumpOnOutOfMemoryError"]
         useJUnitPlatform()
         workingDir = new File("../core/assets")
+        systemProperty "cave.worker.test.classpath", sourceSets.test.runtimeClasspath.asPath
         testLogging{
             exceptionFormat = 'full'
             showStandardStreams = true
