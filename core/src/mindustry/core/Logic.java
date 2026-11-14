@@ -94,7 +94,7 @@ public class Logic implements ApplicationListener{
         // One local preference enables the cycle in campaign and custom games.
         // Preserve older per-world custom rules when the preference is off.
         Events.on(RulesLoadEvent.class, e -> {
-            if(!headless && net != null && !net.active() && !e.rules.editor && Core.settings != null){
+            if(!headless && net != null && !net.active() && !e.rules.editor && !e.rules.caveInterior && Core.settings != null){
                 boolean enabled = Core.settings.getBool("campaignweathercycle", false);
                 if(e.rules.sector != null || enabled) e.rules.weatherCycle = enabled;
             }

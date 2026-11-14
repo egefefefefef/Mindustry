@@ -27,7 +27,7 @@ public class WeatherCycle{
     }
 
     public static boolean enabled(){
-        return localGame() && state.rules.weatherCycle;
+        return localGame() && state.rules.weatherCycle && !state.rules.caveInterior;
     }
 
     private static double validTick(double tick){

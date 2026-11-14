@@ -43,7 +43,10 @@ public final class CaveWorldTransfer{
             state.rules = caveRules;
             state.rules.waves = false;
             state.rules.attackMode = false;
+            state.rules.pvp = false;
             state.rules.weatherCycle = false;
+            state.rules.caveInterior = true;
+            state.rules.weather.clear();
             state.rules.coreIncinerates = false;
             state.rules.caveStorageCapacity = capacity;
             // Only the generated cave core should manage the shared inventory.

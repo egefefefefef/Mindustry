@@ -129,8 +129,12 @@ class CaveWorldTransferTests{
             world.tile(5, 5).setBlock(Blocks.copperWall, Team.sharded);
             Team.sharded.core().items.set(Items.copper, 100);
             int surfaceCapacity = Team.sharded.core().storageCapacity;
+            state.rules.pvp = true; // must never auto-host the underground world
             CaveWorldTransfer.createCave(98765);
             assertTrue(store.archive().inCave());
+            assertTrue(state.rules.caveInterior);
+            assertFalse(state.rules.pvp);
+            assertTrue(state.rules.weather.isEmpty());
             assertEquals(128, world.width());
             assertSame(CaveContent.caveCore, Team.sharded.core().block);
             assertSame(CaveContent.cavePortal, world.tile(70, 64).block());
@@ -146,6 +150,8 @@ class CaveWorldTransferTests{
             assertEquals(surfaceCapacity, Team.sharded.core().storageCapacity);
             CaveWorldTransfer.travel();
             assertFalse(store.archive().inCave());
+            assertFalse(state.rules.caveInterior);
+            assertTrue(state.rules.pvp);
             assertSame(Blocks.copperWall, world.tile(5, 5).block());
             assertEquals(25, Team.sharded.core().items.get(CaveContent.amethyst));
             CaveWorldTransfer.travel();
