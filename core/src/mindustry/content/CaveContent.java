@@ -7,6 +7,7 @@ import mindustry.type.Item;
 import mindustry.world.Block;
 import mindustry.world.blocks.environment.OreBlock;
 import mindustry.world.blocks.caves.CaveCore;
+import mindustry.world.blocks.caves.CavePortal;
 import mindustry.world.blocks.production.Drill;
 import mindustry.world.meta.BuildVisibility;
 import mindustry.type.Category;
@@ -17,7 +18,7 @@ import static mindustry.type.ItemStack.with;
 /** Content for the opt-in local custom-game cave feature. */
 public final class CaveContent{
     public static Item amethyst, adamantite;
-    public static Block oreAmethyst, oreAdamantite, amethystDrill, adamantiteDrill, caveCore;
+    public static Block oreAmethyst, oreAdamantite, amethystDrill, adamantiteDrill, caveCore, cavePortal;
 
     private CaveContent(){}
 
@@ -37,6 +38,7 @@ public final class CaveContent{
             @Override public boolean isHidden(){ return !available(); }
         };
         caveCore = new CaveCore("cave-core");
+        cavePortal = new CavePortal("cave-portal");
         oreAmethyst = new OreBlock(amethyst);
         oreAdamantite = new OreBlock(adamantite);
         BuildVisibility localCaves = new BuildVisibility(CaveContent::available);

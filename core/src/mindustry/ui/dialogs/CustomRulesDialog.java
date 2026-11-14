@@ -220,6 +220,7 @@ public class CustomRulesDialog extends BaseDialog{
 
         category("environment");
         check("@rules.weathercycle", b -> rules.weatherCycle = b, () -> rules.weatherCycle);
+        check("@rules.caves", b -> rules.caves = b, () -> rules.caves);
         check("@rules.pauseDisabled", b -> rules.pauseDisabled = b, () -> rules.pauseDisabled);
         check("@rules.explosions", b -> rules.damageExplosions = b, () -> rules.damageExplosions);
         check("@rules.fire", b -> rules.fire = b, () -> rules.fire);

@@ -133,22 +133,23 @@ class CaveWorldTransferTests{
             assertTrue(store.archive().inCave());
             assertEquals(128, world.width());
             assertSame(CaveContent.caveCore, Team.sharded.core().block);
+            assertSame(CaveContent.cavePortal, world.tile(70, 64).block());
             assertEquals(surfaceCapacity, Team.sharded.core().storageCapacity);
             assertEquals(100, Team.sharded.core().items.get(Items.copper));
-            world.tile(70, 64).setBlock(Blocks.graphitePress, Team.sharded);
+            world.tile(72, 64).setBlock(Blocks.graphitePress, Team.sharded);
             Team.sharded.core().items.add(CaveContent.amethyst, 25);
             SaveIO.save(file);
             logic.reset();
             SaveIO.load(file);
             state.set(State.playing);
-            assertSame(Blocks.graphitePress, world.tile(70, 64).block());
+            assertSame(Blocks.graphitePress, world.tile(72, 64).block());
             assertEquals(surfaceCapacity, Team.sharded.core().storageCapacity);
             CaveWorldTransfer.travel();
             assertFalse(store.archive().inCave());
             assertSame(Blocks.copperWall, world.tile(5, 5).block());
             assertEquals(25, Team.sharded.core().items.get(CaveContent.amethyst));
             CaveWorldTransfer.travel();
-            assertSame(Blocks.graphitePress, world.tile(70, 64).block());
+            assertSame(Blocks.graphitePress, world.tile(72, 64).block());
             assertEquals(25, Team.sharded.core().items.get(CaveContent.amethyst));
         }finally{
             Core.settings.put("experimental-caves", previous);

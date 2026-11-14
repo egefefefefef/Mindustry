@@ -420,6 +420,7 @@ public class SettingsMenuDialog extends BaseDialog{
             default -> "weathercycle.rain.auto";
         }));
         experimental.checkPref("experimental-native-physics", mindustry.core.Version.nativePhysicsDefault);
+        experimental.checkPref("experimental-caves", false);
         game.checkPref("savecreate", true);
         game.checkPref("blockreplace", true);
         game.checkPref("conveyorpathfinding", true);

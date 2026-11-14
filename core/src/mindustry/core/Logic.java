@@ -13,6 +13,7 @@ import mindustry.entities.*;
 import mindustry.game.EventType.*;
 import mindustry.game.*;
 import mindustry.game.caves.CaveSaveStore;
+import mindustry.game.caves.CaveEntrances;
 import mindustry.game.Teams.*;
 import mindustry.gen.*;
 import mindustry.maps.*;
@@ -39,6 +40,7 @@ public class Logic implements ApplicationListener{
 
     public Logic(){
         CaveSaveStore.install();
+        CaveEntrances.install();
 
         Events.on(BlockDestroyEvent.class, event -> {
             //skip if rule is off

@@ -30,6 +30,9 @@ public final class CaveWorldTransfer{
         if(asyncCore != null) asyncCore.awaitWorldTasks();
         ItemModule items = source.items.copy();
         int capacity = source.storageCapacity;
+        for(var item : content.items()){
+            if(items.get(item) > capacity) throw new IllegalStateException("Surface core already exceeds its capacity for " + item.name);
+        }
         Rules caveRules = state.rules.copy();
         var surfaceMap = state.map;
         State previousState = state.getState();
@@ -41,6 +44,7 @@ public final class CaveWorldTransfer{
             state.rules.waves = false;
             state.rules.attackMode = false;
             state.rules.weatherCycle = false;
+            state.rules.coreIncinerates = false;
             state.rules.caveStorageCapacity = capacity;
             // Only the generated cave core should manage the shared inventory.
             state.rules.blockWhitelist = false;
@@ -49,6 +53,7 @@ public final class CaveWorldTransfer{
             world.loadGenerator(128, 128, tiles -> {
                 CaveMapGenerator.populate(tiles, seed);
                 tiles.getn(64, 64).setBlock(CaveContent.caveCore, team);
+                tiles.getn(70, 64).setBlock(CaveContent.cavePortal, team);
             });
             CoreBuild caveCore = team.core();
             if(caveCore == null || caveCore.storageCapacity < capacity) throw new IllegalStateException("Failed to create the cave core");
