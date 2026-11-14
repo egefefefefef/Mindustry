@@ -3,6 +3,7 @@ import arc.files.Fi;
 import mindustry.content.Blocks;
 import mindustry.content.CaveContent;
 import mindustry.content.Items;
+import mindustry.content.Liquids;
 import mindustry.core.GameState.State;
 import mindustry.game.Team;
 import mindustry.game.caves.CaveSaveStore;
@@ -97,6 +98,45 @@ class CaveSimulationWorkerTests{
             assertSame(Blocks.router, world.tile(69, 64).block());
             assertTrue(Team.sharded.core().items.get(CaveContent.amethyst) > 0, "Items must travel through the router");
             assertTrue(world.tile(74, 63).build.items.get(Items.coal) < 10, "Generator must consume fuel");
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void isolatedWorkerRunsLiquidSupplyFuelPowerAndCrafting() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            prepareCave();
+            for(int x = 48; x <= 60; x++) for(int y = 76; y <= 84; y++){
+                var tile = world.tile(x, y);
+                tile.setBlock(Blocks.air);
+                tile.setFloor(Blocks.stone.asFloor());
+                tile.setOverlay(Blocks.air);
+            }
+            world.tile(50, 80).setFloor(Blocks.water.asFloor());
+            world.tile(50, 80).setBlock(Blocks.mechanicalPump, Team.sharded);
+            for(int x = 51; x <= 53; x++) world.tile(x, 80).setBlock(Blocks.conduit, Team.sharded, 0);
+            world.tile(54, 80).setBlock(Blocks.steamGenerator, Team.sharded);
+            world.tile(56, 80).setBlock(Blocks.siliconSmelter, Team.sharded);
+            world.tile(54, 80).build.items.set(Items.coal, 10);
+            world.tile(56, 80).build.items.set(Items.coal, 10);
+            world.tile(56, 80).build.items.set(Items.sand, 20);
+            Path input = directory.resolve("liquid-input.msav"), output = directory.resolve("liquid-output.msav");
+            Files.write(input, CaveSaveStore.instance.captureWorld());
+            assertEquals(0, runWorker(input, output, 900));
+            SaveIO.load(new Fi(output.toFile()));
+            state.set(State.playing);
+            var pump = world.tile(50, 80).build;
+            var pipe = world.tile(52, 80).build;
+            var generator = world.tile(54, 80).build;
+            var crafter = world.tile(56, 80).build;
+            assertSame(Blocks.mechanicalPump, pump.block);
+            assertSame(Blocks.conduit, pipe.block);
+            assertTrue(pump.liquids.get(Liquids.water) + pipe.liquids.get(Liquids.water) + generator.liquids.get(Liquids.water) > 0f,
+                "Pump and conduits must supply water");
+            assertTrue(generator.items.get(Items.coal) < 10, "Water-fed generator must consume fuel");
+            assertTrue(crafter.items.get(Items.coal) < 10 && crafter.items.get(Items.sand) < 20, "Crafter must consume its inputs");
+            assertTrue(crafter.items.get(Items.silicon) > 0, "Connected power must run the real silicon smelter");
         }finally{
             Core.settings.put("experimental-caves", previous);
         }
