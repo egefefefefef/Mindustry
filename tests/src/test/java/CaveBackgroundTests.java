@@ -48,6 +48,19 @@ class CaveBackgroundTests{
             state.rules.caves = true;
             CaveWorldTransfer.createCave(1234);
             DrillBuild drill = prepareDrill(true);
+            assertTrue(drill.enabled, "Drill must be enabled");
+            assertFalse(drill.block.hasPower, "Mechanical drill should not require power");
+            assertEquals(1f, drill.timeScale(), "Drill should have normal time scale");
+            assertTrue(mindustry.gen.Groups.build.contains(b -> b == drill), "Drill must be in the build group");
+            for(int x = 67; x <= 71; x++){
+                var belt = world.tile(x, 64).build;
+                assertSame(world.tile(x - 1, 64).build, belt.front(), "Broken belt at " + x);
+                var prev = x == 71 ? drill : world.tile(x + 1, 64).build;
+                var facing = mindustry.world.Edges.getFacingEdge(prev.tile, belt.tile);
+                assertNotNull(facing);
+                assertEquals(2, facing.relativeTo(belt.tile.x, belt.tile.y), "Belt input at " + x);
+                assertTrue(belt.enabled, "Belt enabled at " + x);
+            }
             assertSame(Items.coal, drill.dominantItem, "The drill must be on coal");
             assertTrue(drill.dominantItems > 0, "The drill must detect ore");
             assertTrue(drill.proximity.contains(world.tile(71, 64).build), "The drill must touch the conveyor");
