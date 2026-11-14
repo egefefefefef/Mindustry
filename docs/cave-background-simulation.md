@@ -10,9 +10,9 @@ note enables a second simulation or alters existing saves.
 content, and other subsystems currently represent a single live world. Loading
 another map resets those global objects. Running the cave in another thread
 against the same globals is therefore unsafe, even if the tile arrays differ.
-A possible design is an isolated headless process, but the desktop package does
-not currently include the headless backend and isolation has not been proven
-for mods, settings, content IDs, native code or all platforms.
+A possible design is an isolated headless process. The desktop package now
+includes the experimental worker and headless backend, but isolation has not
+been proven for mods, settings, content IDs, native code or all platforms.
 
 `CaveSimulationWorker` is a separate-process prototype that loads one unpaired,
 non-modded cave snapshot and advances the real Java logic for a bounded number of
@@ -39,10 +39,11 @@ visible pauses and is not suitable for production gameplay. Integration tests
 manually disable the approximate model and publish a checkpoint before a normal
 save and travel; no production path does so yet.
 
-Neither prototype is packaged in the desktop application or connected to
-gameplay. There is no live inventory synchronization, atomic two-world disk
-commit, crash recovery, pause coordination, or performance measurement.
-Passing isolated tests is not proof of full simulation parity.
+The worker classes are packaged in the desktop application but neither prototype
+is launched or connected to gameplay. There is no production live inventory
+synchronization, atomic two-world disk commit, crash recovery, pause
+coordination, or performance measurement. Passing isolated tests is not proof
+of full simulation parity.
 
 ## Required transaction boundary
 

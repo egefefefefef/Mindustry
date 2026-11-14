@@ -266,6 +266,9 @@ project(":desktop"){
 
     dependencies{
         implementation project(":core")
+        // Package the experimental isolated cave worker and its headless backend.
+        // This does not start it or enable background simulation in gameplay.
+        runtimeOnly project(":server")
         implementation arcModule("extensions:profiling")
         implementation arcModule("extensions:discord")
         implementation arcModule("natives:natives-filedialogs")

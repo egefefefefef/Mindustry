@@ -46,6 +46,21 @@ runs:
         test -f desktop/build/libs/Mindustry.jar
         test -f server/build/libs/server-release.jar
 
+    - name: Verify experimental cave worker packaging
+      shell: bash
+      run: |
+        set -o pipefail
+        jar tf desktop/build/libs/Mindustry.jar > /tmp/mindustry-desktop-contents.txt
+        grep -Fx 'mindustry/server/CavePersistentService.class' /tmp/mindustry-desktop-contents.txt
+        grep -Fx 'mindustry/server/CaveSimulationWorker.class' /tmp/mindustry-desktop-contents.txt
+        grep -Fx 'arc/backend/headless/HeadlessApplication.class' /tmp/mindustry-desktop-contents.txt
+        set +e
+        java -cp desktop/build/libs/Mindustry.jar mindustry.server.CavePersistentService > /tmp/cave-worker-smoke.log 2>&1
+        status=$?
+        set -e
+        test "$status" -eq 2
+        grep -F 'Usage: CavePersistentService' /tmp/cave-worker-smoke.log
+
     - name: Verify packaged JNI library
       shell: bash
       run: |
