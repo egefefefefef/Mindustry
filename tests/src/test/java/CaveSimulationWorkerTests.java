@@ -6,6 +6,9 @@ import mindustry.content.Items;
 import mindustry.core.GameState.State;
 import mindustry.game.Team;
 import mindustry.game.caves.CaveSaveStore;
+import mindustry.game.caves.CaveArchive;
+import mindustry.game.caves.CaveBackground;
+import mindustry.game.caves.CaveLiveBridge;
 import mindustry.game.caves.CaveWorldTransfer;
 import mindustry.game.caves.CaveInventoryLedger;
 import mindustry.game.caves.CavePersistentClient;
@@ -290,6 +293,77 @@ class CaveSimulationWorkerTests{
                 SaveIO.load(new Fi(output.toFile()));
                 state.set(State.playing);
                 for(var item : content.items()) assertEquals(counts[item.id], Team.sharded.core().items.get(item), item.name);
+            }
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    private CavePersistentClient launchRealClient(Path input) throws Exception{
+        String[] names = new String[content.items().size];
+        for(var item : content.items()) names[item.id] = item.name;
+        String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        var command = List.of(java, "-cp", System.getProperty("cave.worker.test.classpath"), "mindustry.server.CavePersistentService",
+            input.toString(), directory.resolve("bridge-data").toString());
+        return CavePersistentClient.launch(command, directory.resolve("bridge.log"), input, names, Team.sharded.id, 30000);
+    }
+
+    @Test void liveBridgeTestCheckpointSurvivesSaveReloadAndTravel() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareCave();
+            CaveWorldTransfer.travel();
+            // These prototype tests explicitly turn off the old approximation;
+            // the experimental bridge is never installed in gameplay.
+            CaveBackground.instance.setPlan(null);
+            var surfaceCore = Team.sharded.core();
+            surfaceCore.items.set(Items.copper, 50);
+            try(var client = launchRealClient(input);
+                var bridge = new CaveLiveBridge(client, () -> Team.sharded.core(), Team.sharded.id)){
+                for(int i = 0; i < 20; i++){
+                    if(i == 10) surfaceCore.items.set(Items.copper, 40);
+                    bridge.step(60);
+                    assertEquals(i < 10 ? 50 : 40, surfaceCore.items.get(Items.copper));
+                }
+                int produced = surfaceCore.items.get(CaveContent.amethyst);
+                assertTrue(produced > 0, "Real cave production must reach the real surface core");
+                byte[] snapshot = bridge.checkpoint();
+                CaveSaveStore.instance.setArchive(new CaveArchive(false, 4321, snapshot));
+                Fi save = new Fi(directory.resolve("bridge-paired.msav").toFile());
+                SaveIO.save(save);
+                logic.reset();
+                SaveIO.load(save);
+                state.set(State.playing);
+                assertEquals(produced, Team.sharded.core().items.get(CaveContent.amethyst));
+                CaveWorldTransfer.travel();
+                assertSame(Blocks.router, world.tile(69, 64).block());
+                assertTrue(world.tile(74, 63).build.items.get(Items.coal) < 10);
+                assertEquals(produced, Team.sharded.core().items.get(CaveContent.amethyst));
+                assertEquals(40, Team.sharded.core().items.get(Items.copper));
+            }
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void liveBridgeDiscardsConflictingWorkerResponse() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareCave();
+            CaveWorldTransfer.travel();
+            CaveBackground.instance.setPlan(null);
+            var surfaceCore = Team.sharded.core();
+            surfaceCore.items.set(Items.copper, 50);
+            int[] calls = {0};
+            try(var client = launchRealClient(input);
+                var bridge = new CaveLiveBridge(client, () -> {
+                    if(++calls[0] == 2) surfaceCore.items.set(Items.copper, 40);
+                    return surfaceCore;
+                }, Team.sharded.id)){
+                assertThrows(IOException.class, () -> bridge.step(60));
+                assertEquals(40, surfaceCore.items.get(Items.copper), "Conflicting surface spend must survive");
+                assertTrue(bridge.failed());
+                assertThrows(IOException.class, bridge::checkpoint);
             }
         }finally{
             Core.settings.put("experimental-caves", previous);

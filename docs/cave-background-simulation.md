@@ -29,6 +29,16 @@ messages and response times, and discards the process on a failed request. The
 caller must abort the entire session if a response cannot be committed; it must
 never silently merge a stale response.
 
+`CaveLiveBridge` is a synchronous, test-only experiment for exchanging with an
+actual core on its owning game thread. It detects changed core identity, item
+counts, capacity and content order, then poisons and discards the worker on a
+conflict. A checkpoint is only an *uncommitted* snapshot: callers still need a
+durable transaction for the two worlds, a recovery strategy for all previously
+applied steps, and lifecycle/thread coordination. Its blocking IPC would cause
+visible pauses and is not suitable for production gameplay. Integration tests
+manually disable the approximate model and publish a checkpoint before a normal
+save and travel; no production path does so yet.
+
 Neither prototype is packaged in the desktop application or connected to
 gameplay. There is no live inventory synchronization, atomic two-world disk
 commit, crash recovery, pause coordination, or performance measurement.

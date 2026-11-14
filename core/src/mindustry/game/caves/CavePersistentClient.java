@@ -17,15 +17,17 @@ public final class CavePersistentClient implements AutoCloseable{
     private final ExecutorService executor;
     private final long timeoutMillis;
     private final int team, itemCount;
+    private final String[] itemNames;
     private int caveCapacity;
     private long nextId;
     private boolean closed;
 
-    private CavePersistentClient(Process process, long timeoutMillis, int team, int itemCount){
+    private CavePersistentClient(Process process, long timeoutMillis, int team, String[] itemNames){
         this.process = process;
         this.timeoutMillis = timeoutMillis;
         this.team = team;
-        this.itemCount = itemCount;
+        this.itemNames = itemNames.clone();
+        this.itemCount = itemNames.length;
         input = new DataInputStream(new BufferedInputStream(process.getInputStream()));
         output = new DataOutputStream(new BufferedOutputStream(process.getOutputStream()));
         executor = Executors.newSingleThreadExecutor(r -> {
@@ -49,7 +51,7 @@ public final class CavePersistentClient implements AutoCloseable{
         for(String name : names) if(name == null || name.isEmpty() || name.length() > 128) throw new IllegalArgumentException("Invalid item name");
         byte[] hash = CaveSimulationExchange.digest(snapshot);
         Process process = new ProcessBuilder(command).redirectError(stderrLog.toFile()).start();
-        var client = new CavePersistentClient(process, timeoutMillis, team, names.length);
+        var client = new CavePersistentClient(process, timeoutMillis, team, names);
         try{
             client.call(() -> {
                 if(client.input.readInt() != CavePersistentProtocol.magic || client.input.readInt() != CavePersistentProtocol.version){
@@ -71,6 +73,10 @@ public final class CavePersistentClient implements AutoCloseable{
     }
 
     public int caveCapacity(){ return caveCapacity; }
+
+    boolean matchesIdentity(int team, String[] names){
+        return this.team == team && Arrays.equals(itemNames, names);
+    }
 
     /** Counts after one sequential real-world step. The input array is never mutated. */
     public synchronized int[] step(int ticks, int capacity, int[] counts) throws IOException{
@@ -149,6 +155,11 @@ public final class CavePersistentClient implements AutoCloseable{
             abort();
             throw new IOException("Cave worker failed; session discarded", e.getCause());
         }
+    }
+
+    /** Immediately discard an uncommittable session without another protocol round trip. */
+    synchronized void discard(){
+        if(!closed) abort();
     }
 
     /** Close without publishing any further worker state. */
