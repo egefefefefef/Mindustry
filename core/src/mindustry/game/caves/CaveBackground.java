@@ -4,6 +4,7 @@ import arc.Events;
 import arc.struct.IntSet;
 import arc.struct.Seq;
 import arc.util.Time;
+import mindustry.content.Blocks;
 import mindustry.content.CaveContent;
 import mindustry.ctype.ContentType;
 import mindustry.game.EventType.ResetEvent;
@@ -112,7 +113,7 @@ public final class CaveBackground implements CustomChunk{
             if(!(next instanceof ConveyorBuild) || next.team != drill.team) continue;
             Building previous = drill, current = next;
             float rate = Float.MAX_VALUE;
-            while(current instanceof ConveyorBuild belt && current.block.getClass() == Conveyor.class && current.team == drill.team &&
+            while(current instanceof ConveyorBuild belt && (current.block == Blocks.conveyor || current.block == Blocks.titaniumConveyor) && current.team == drill.team &&
                 current.enabled && !used.contains(current.pos()) && route.add(current.pos())){
                 var facing = Edges.getFacingEdge(previous.tile, current.tile);
                 if(facing == null) break;

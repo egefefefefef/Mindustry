@@ -47,12 +47,17 @@ class CaveBackgroundTests{
             Core.settings.put("experimental-caves", true);
             state.rules.caves = true;
             CaveWorldTransfer.createCave(1234);
-            prepareDrill(true);
+            DrillBuild drill = prepareDrill(true);
+            assertSame(Items.coal, drill.dominantItem, "The drill must be on coal");
+            assertTrue(drill.dominantItems > 0, "The drill must detect ore");
+            assertTrue(drill.proximity.contains(world.tile(71, 64).build), "The drill must touch the conveyor");
+            assertSame(Team.sharded.core(), world.tile(66, 64).build.front(), "The last belt must point at the core");
+            assertEquals(1, CaveBackground.capture(Team.sharded).size(), "Expected one supported route before exit");
             Team.sharded.core().items.set(Items.coal, 0);
             CaveWorldTransfer.travel();
             var background = CaveBackground.instance;
             assertNotNull(background.plan());
-            assertEquals(1, background.plan().size());
+            assertEquals(1, background.plan().size(), "Background plan immediately after exit");
             background.advance(1000);
             int first = Team.sharded.core().items.get(Items.coal);
             assertTrue(first > 0);
@@ -61,7 +66,7 @@ class CaveBackgroundTests{
             SaveIO.load(file);
             state.set(State.playing);
             assertEquals(first, Team.sharded.core().items.get(Items.coal));
-            assertEquals(1, background.plan().size());
+            assertEquals(1, background.plan().size(), "Background plan after save and reload");
             background.advance(1000);
             int total = Team.sharded.core().items.get(Items.coal);
             assertTrue(total > first);
