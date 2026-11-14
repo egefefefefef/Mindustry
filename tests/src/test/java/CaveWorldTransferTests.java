@@ -1,6 +1,7 @@
 import arc.Core;
 import arc.assets.AssetManager;
 import mindustry.content.Blocks;
+import mindustry.content.CaveContent;
 import mindustry.game.Saves;
 import mindustry.content.Items;
 import mindustry.core.GameState.State;
@@ -115,6 +116,44 @@ class CaveWorldTransferTests{
             file.delete();
             SaveIO.backupFileFor(file).delete();
             Core.assets = previousAssets;
+        }
+    }
+
+    @Test
+    void createsCaveSavesBothWorldsAndReturnsWithSharedResources(){
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        var file = saveDirectory.child("generated-cave-test.msav");
+        try{
+            Core.settings.put("experimental-caves", true);
+            state.rules.caves = true;
+            world.tile(5, 5).setBlock(Blocks.copperWall, Team.sharded);
+            Team.sharded.core().items.set(Items.copper, 100);
+            int surfaceCapacity = Team.sharded.core().storageCapacity;
+            CaveWorldTransfer.createCave(98765);
+            assertTrue(store.archive().inCave());
+            assertEquals(128, world.width());
+            assertSame(CaveContent.caveCore, Team.sharded.core().block);
+            assertEquals(surfaceCapacity, Team.sharded.core().storageCapacity);
+            assertEquals(100, Team.sharded.core().items.get(Items.copper));
+            world.tile(70, 64).setBlock(Blocks.graphitePress, Team.sharded);
+            Team.sharded.core().items.add(CaveContent.amethyst, 25);
+            SaveIO.save(file);
+            logic.reset();
+            SaveIO.load(file);
+            state.set(State.playing);
+            assertSame(Blocks.graphitePress, world.tile(70, 64).block());
+            assertEquals(surfaceCapacity, Team.sharded.core().storageCapacity);
+            CaveWorldTransfer.travel();
+            assertFalse(store.archive().inCave());
+            assertSame(Blocks.copperWall, world.tile(5, 5).block());
+            assertEquals(25, Team.sharded.core().items.get(CaveContent.amethyst));
+            CaveWorldTransfer.travel();
+            assertSame(Blocks.graphitePress, world.tile(70, 64).block());
+            assertEquals(25, Team.sharded.core().items.get(CaveContent.amethyst));
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+            file.delete();
+            SaveIO.backupFileFor(file).delete();
         }
     }
 

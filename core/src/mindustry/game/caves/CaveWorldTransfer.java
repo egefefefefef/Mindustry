@@ -1,8 +1,11 @@
 package mindustry.game.caves;
 
+import mindustry.content.CaveContent;
 import mindustry.core.GameState.State;
+import mindustry.game.Rules;
 import mindustry.game.Team;
 import mindustry.io.SaveIO;
+import mindustry.world.blocks.storage.CoreBlock;
 import mindustry.world.blocks.storage.CoreBlock.CoreBuild;
 import mindustry.world.modules.ItemModule;
 
@@ -14,6 +17,62 @@ import static mindustry.Vars.*;
 /** Transactional switch between two saved worlds, with shared team-core items. */
 public final class CaveWorldTransfer{
     private CaveWorldTransfer(){}
+
+    /** Create and enter the first cave; the source world is snapshotted first. */
+    public static void createCave(long seed){
+        var store = CaveSaveStore.instance;
+        if(store.archive() != null || store.isTransferring()) throw new IllegalStateException("Cave already exists or a switch is running");
+        if(!CaveContent.available()) throw new IllegalStateException("Caves are not enabled for this local custom game");
+        if(control != null && control.saves != null && control.saves.isSaving()) throw new IllegalStateException("Wait for the current save to finish");
+        Team team = player != null ? player.team() : state.rules.defaultTeam;
+        CoreBuild source = team.core();
+        if(source == null) throw new IllegalStateException("A team core is required to share resources");
+        if(asyncCore != null) asyncCore.awaitWorldTasks();
+        ItemModule items = source.items.copy();
+        int capacity = source.storageCapacity;
+        Rules caveRules = state.rules.copy();
+        var surfaceMap = state.map;
+        State previousState = state.getState();
+        byte[] surface = store.captureWorld();
+        store.transferring(true);
+        try{
+            logic.reset();
+            state.rules = caveRules;
+            state.rules.waves = false;
+            state.rules.attackMode = false;
+            state.rules.weatherCycle = false;
+            state.rules.caveStorageCapacity = capacity;
+            // Only the generated cave core should manage the shared inventory.
+            state.rules.blockWhitelist = false;
+            for(var block : content.blocks()) if(block instanceof CoreBlock) state.rules.bannedBlocks.add(block);
+            state.map = surfaceMap;
+            world.loadGenerator(128, 128, tiles -> {
+                CaveMapGenerator.populate(tiles, seed);
+                tiles.getn(64, 64).setBlock(CaveContent.caveCore, team);
+            });
+            CoreBuild caveCore = team.core();
+            if(caveCore == null || caveCore.storageCapacity < capacity) throw new IllegalStateException("Failed to create the cave core");
+            caveCore.items.set(items);
+            store.setArchive(new CaveArchive(true, seed, surface));
+            if(player != null){
+                player.team(team);
+                player.add();
+                CoreBlock.playerSpawn(caveCore.tile, player);
+            }
+            state.set(previousState);
+        }catch(Exception failure){
+            try{
+                load(surface);
+                store.clear();
+                state.set(previousState);
+            }catch(Exception rollback){
+                failure.addSuppressed(rollback);
+            }
+            throw new IllegalStateException("Cave creation failed; surface restored if rollback succeeded", failure);
+        }finally{
+            store.transferring(false);
+        }
+    }
 
     /** Switch to the inactive world recorded in the current save. */
     public static void travel(){

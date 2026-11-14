@@ -187,6 +187,8 @@ public class Rules{
     public boolean weatherCycle = false;
     /** Optional cave access for local custom games; also requires the local experimental switch. */
     public boolean caves = false;
+    /** Shared core limit for a generated cave; ignored outside cave worlds. */
+    public int caveStorageCapacity = 0;
     /** Block placement limits by type. */
     public ObjectIntMap<Block> blockLimits = new ObjectIntMap<>();
     /** Blocks that cannot be placed. */
