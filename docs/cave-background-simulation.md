@@ -54,6 +54,19 @@ unsaved progress after a game crash, and does not yet handle lifecycle, worker
 launch, asynchronous scheduling, or performance. In particular, making a full
 snapshot every step can be expensive and has not been measured.
 
+`CaveAsyncBridge` is a single-flight, game-thread-publication prototype: IPC
+runs on a daemon thread, and polling does not wait for a worker response. The
+live core's `ItemModule` has an in-memory mutation revision so spending and
+replacing the same items while a request is outstanding is still detected.
+Conflicts, failures, or cancellation discard the worker without publishing the
+pending state; a test saves while a step is outstanding and reloads the last
+published pair. This is not yet a scheduler: the caller must account for and
+retry uncommitted ticks, cancel on every pause/travel/reset transition (even one
+that changes back before polling), launch workers off-thread, and serialize
+all game state and save access on the game thread. Snapshot copies and response
+publication still do work on that thread. Save durability and wall-clock timer
+semantics remain unresolved; the item revision's performance cost is unmeasured.
+
 The worker classes are packaged in the desktop application but neither prototype
 is launched or connected to gameplay. There is no production live inventory
 synchronization, atomic two-world disk commit, crash recovery, pause

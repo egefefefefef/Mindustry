@@ -21,7 +21,8 @@ public final class CavePersistentClient implements AutoCloseable{
     private final byte[] initialHash;
     private int caveCapacity;
     private long nextId;
-    private boolean closed;
+    private volatile boolean closed;
+    private volatile Future<?> inFlight;
 
     private CavePersistentClient(Process process, long timeoutMillis, int team, String[] itemNames, byte[] initialHash){
         this.process = process;
@@ -153,7 +154,15 @@ public final class CavePersistentClient implements AutoCloseable{
             abort();
             throw new IOException("Cave worker is not running");
         }
-        Future<T> future = executor.submit(task);
+        Future<T> future;
+        try{
+            future = executor.submit(task);
+        }catch(RejectedExecutionException rejected){
+            abort();
+            throw new IOException("Cave worker has been discarded", rejected);
+        }
+        inFlight = future;
+        if(closed) future.cancel(true);
         try{
             return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
         }catch(InterruptedException e){
@@ -166,17 +175,24 @@ public final class CavePersistentClient implements AutoCloseable{
         }catch(ExecutionException e){
             abort();
             throw new IOException("Cave worker failed; session discarded", e.getCause());
+        }catch(CancellationException e){
+            abort();
+            throw new IOException("Cave worker request was cancelled", e);
+        }finally{
+            if(inFlight == future) inFlight = null;
         }
     }
 
-    /** Immediately discard an uncommittable session without another protocol round trip. */
-    synchronized void discard(){
-        if(!closed) abort();
+    /** Immediately discard without waiting for another thread's IPC request. */
+    void discard(){
+        abort();
     }
 
     /** Close without publishing any further worker state. */
     private void abort(){
         closed = true;
+        Future<?> pending = inFlight;
+        if(pending != null) pending.cancel(true);
         // Do not synchronously close buffered pipes here: another thread may be
         // blocked inside read/flush while holding their monitor. Killing the
         // process closes the OS pipes without extending the caller's timeout.

@@ -15,6 +15,7 @@ import mindustry.game.caves.CaveArchive;
 import mindustry.game.caves.CaveBackground;
 import mindustry.game.caves.CaveLiveBridge;
 import mindustry.game.caves.CavePairedBridge;
+import mindustry.game.caves.CaveAsyncBridge;
 import mindustry.game.caves.CaveWorldTransfer;
 import mindustry.game.caves.CaveInventoryLedger;
 import mindustry.game.caves.CavePersistentClient;
@@ -576,6 +577,159 @@ class CaveSimulationWorkerTests{
             CaveSaveStore.instance.setArchive(new CaveArchive(false, archive.seed(), wrong));
             try(var client = launchRealClient(input)){
                 assertThrows(IllegalArgumentException.class, () -> new CavePairedBridge(client, () -> Team.sharded.core(), Team.sharded.id));
+            }
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    private CaveAsyncBridge.Status awaitAsync(CaveAsyncBridge bridge) throws Exception{
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+        while(System.nanoTime() < deadline){
+            var result = bridge.poll();
+            if(result != CaveAsyncBridge.Status.pending) return result;
+            Thread.sleep(5);
+        }
+        fail("Asynchronous cave step timed out");
+        return null;
+    }
+
+    private Path prepareSurfaceArchive() throws Exception{
+        Path input = prepareCave();
+        CaveWorldTransfer.travel();
+        CaveBackground.instance.setPlan(null);
+        Files.write(input, CaveSaveStore.instance.archive().inactiveWorld());
+        return input;
+    }
+
+    @Test void asyncStepsPublishOnlyWhenPolledAndPreserveSurfaceSpending() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareSurfaceArchive();
+            var surface = Team.sharded.core();
+            surface.items.set(Items.copper, 50);
+            try(var client = launchRealClient(input);
+                var bridge = new CaveAsyncBridge(client, () -> Team.sharded.core(), Team.sharded.id)){
+                assertEquals(CaveAsyncBridge.Status.idle, bridge.poll());
+                for(int i = 0; i < 20; i++){
+                    if(i == 10) surface.items.set(Items.copper, 40);
+                    var archive = CaveSaveStore.instance.archive();
+                    bridge.begin(60);
+                    if(i == 0) world.tile(5, 5).setBlock(Blocks.copperWall, Team.sharded);
+                    assertThrows(IllegalStateException.class, () -> bridge.begin(60));
+                    assertSame(archive, CaveSaveStore.instance.archive(), "Worker cannot publish outside the game thread");
+                    assertEquals(CaveAsyncBridge.Status.applied, awaitAsync(bridge));
+                    assertNotSame(archive, CaveSaveStore.instance.archive());
+                    assertEquals(i < 10 ? 50 : 40, surface.items.get(Items.copper));
+                }
+                assertTrue(surface.items.get(CaveContent.amethyst) > 0);
+            }
+            int produced = surface.items.get(CaveContent.amethyst);
+            assertSame(Blocks.copperWall, world.tile(5, 5).block());
+            CaveWorldTransfer.travel();
+            assertEquals(produced, Team.sharded.core().items.get(CaveContent.amethyst));
+            assertEquals(40, Team.sharded.core().items.get(Items.copper));
+            assertTrue(world.tile(74, 63).build.items.get(Items.coal) < 10);
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void saveWhileStepIsOutstandingContainsLastCommittedPair() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareSurfaceArchive();
+            Team.sharded.core().items.set(Items.copper, 50);
+            var original = CaveSaveStore.instance.archive().inactiveWorld();
+            Fi save = new Fi(directory.resolve("pending-save.msav").toFile());
+            try(var client = launchRealClient(input);
+                var bridge = new CaveAsyncBridge(client, () -> Team.sharded.core(), Team.sharded.id)){
+                bridge.begin(60);
+                SaveIO.save(save);
+                assertEquals(CaveAsyncBridge.Status.applied, awaitAsync(bridge));
+            }
+            logic.reset();
+            SaveIO.load(save);
+            state.set(State.playing);
+            assertEquals(50, Team.sharded.core().items.get(Items.copper));
+            assertArrayEquals(original, CaveSaveStore.instance.archive().inactiveWorld());
+            CaveWorldTransfer.travel();
+            assertEquals(10, world.tile(74, 63).build.items.get(Items.coal));
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void asyncRejectsAbaInventoryChangeEvenWhenCountsMatch() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareSurfaceArchive();
+            var surface = Team.sharded.core();
+            surface.items.set(Items.copper, 50);
+            var committed = CaveSaveStore.instance.archive();
+            try(var client = launchRealClient(input);
+                var bridge = new CaveAsyncBridge(client, () -> Team.sharded.core(), Team.sharded.id)){
+                bridge.begin(60);
+                surface.items.remove(Items.copper, 10);
+                surface.items.add(Items.copper, 10);
+                assertThrows(IOException.class, () -> awaitAsync(bridge));
+                assertTrue(bridge.failed());
+                assertSame(committed, CaveSaveStore.instance.archive());
+                assertEquals(50, surface.items.get(Items.copper));
+                assertThrows(IOException.class, () -> bridge.begin(60));
+            }
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void asyncRejectsResponseAfterPause() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareSurfaceArchive();
+            var committed = CaveSaveStore.instance.archive();
+            try(var client = launchRealClient(input);
+                var bridge = new CaveAsyncBridge(client, () -> Team.sharded.core(), Team.sharded.id)){
+                bridge.begin(60);
+                state.set(State.paused);
+                assertThrows(IOException.class, () -> awaitAsync(bridge));
+                assertTrue(bridge.failed());
+                assertSame(committed, CaveSaveStore.instance.archive());
+            }
+        }finally{
+            state.set(State.playing);
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void closingAsyncBridgeDoesNotWaitForAStalledWorker() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareSurfaceArchive();
+            int capacity = Team.sharded.core().storageCapacity;
+            String[] names = new String[content.items().size];
+            for(var item : content.items()) names[item.id] = item.name;
+            Path namesFile = directory.resolve("names.txt"), marker = directory.resolve("received");
+            Files.write(namesFile, Arrays.asList(names));
+            String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+            var command = List.of(java, "-cp", System.getProperty("cave.worker.test.classpath"), "CavePersistentTestChild",
+                "surface-hang", input.toString(), namesFile.toString(), String.valueOf(capacity), marker.toString());
+            var committed = CaveSaveStore.instance.archive();
+            var client = CavePersistentClient.launch(command, directory.resolve("hang.log"), input, names, Team.sharded.id, 30000);
+            var bridge = new CaveAsyncBridge(client, () -> Team.sharded.core(), Team.sharded.id);
+            try{
+                bridge.begin(60);
+                long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+                while(!Files.exists(marker) && System.nanoTime() < deadline) Thread.sleep(5);
+                assertTrue(Files.exists(marker), "Child must be waiting inside a request");
+                long start = System.nanoTime();
+                assertEquals(CaveAsyncBridge.Status.pending, bridge.poll());
+                bridge.close();
+                assertTrue(System.nanoTime() - start < TimeUnit.SECONDS.toNanos(3), "Cancellation must not wait for IPC timeout");
+                assertSame(committed, CaveSaveStore.instance.archive());
+                assertThrows(IOException.class, bridge::poll);
+            }finally{
+                bridge.close();
             }
         }finally{
             Core.settings.put("experimental-caves", previous);

@@ -4,6 +4,8 @@ import mindustry.game.caves.CaveSimulationExchange;
 
 import java.io.*;
 import java.nio.file.Path;
+import java.nio.file.Files;
+import java.util.List;
 
 /** Deliberately faulty subprocess used only by CavePersistentClientTests. */
 public class CavePersistentTestChild{
@@ -13,14 +15,21 @@ public class CavePersistentTestChild{
         var out = new DataOutputStream(new BufferedOutputStream(System.out));
         if(mode.equals("bad-magic")){ out.writeInt(0); out.flush(); return; }
         out.writeInt(CavePersistentProtocol.magic); out.writeInt(CavePersistentProtocol.version);
-        out.writeInt(10); out.writeInt(2); out.writeUTF("copper"); out.writeUTF("lead");
+        if(mode.equals("surface-hang")){
+            List<String> names = Files.readAllLines(Path.of(args[2]));
+            out.writeInt(Integer.parseInt(args[3])); out.writeInt(names.size());
+            for(String name : names) out.writeUTF(name);
+        }else{
+            out.writeInt(10); out.writeInt(2); out.writeUTF("copper"); out.writeUTF("lead");
+        }
         out.write(CaveSimulationExchange.digest(Path.of(args[1]))); out.flush();
         var in = new DataInputStream(new BufferedInputStream(System.in));
         int command = in.readUnsignedByte(); long id = in.readLong();
         in.readInt(); in.readInt(); int count = in.readInt();
         if(command == CavePersistentProtocol.step || command == CavePersistentProtocol.stepCheckpoint) in.readInt();
         for(int i = 0; i < count; i++) in.readInt();
-        if(mode.equals("hang-step")){ Thread.sleep(30000); return; }
+        if(mode.equals("surface-hang")) Files.writeString(Path.of(args[4]), "received");
+        if(mode.equals("hang-step") || mode.equals("surface-hang")){ Thread.sleep(30000); return; }
         if(mode.equals("bad-checkpoint")){
             out.writeByte(command); out.writeLong(id); out.writeInt(count);
             for(int i = 0; i < count; i++) out.writeInt(0);

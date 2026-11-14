@@ -82,13 +82,13 @@ public final class CaveLiveBridge implements AutoCloseable{
             counts[i] = core.items.get(item);
             if(counts[i] < 0 || counts[i] > capacity) throw new IOException("Surface core exceeds shared capacity");
         }
-        return new Capture(core, core.items, capacity, core.storageCapacity, counts);
+        return new Capture(core, core.items, capacity, core.storageCapacity, core.items.revision(), counts);
     }
 
     private void ensureUnchanged(Capture before) throws IOException{
         Capture after = capture();
         if(before.core != after.core || before.module != after.module || before.surfaceCapacity != after.surfaceCapacity ||
-            before.capacity != after.capacity || !Arrays.equals(before.counts, after.counts)){
+            before.capacity != after.capacity || before.revision != after.revision || !Arrays.equals(before.counts, after.counts)){
             throw new IOException("Surface core changed during cave simulation; session discarded");
         }
     }
@@ -105,5 +105,5 @@ public final class CaveLiveBridge implements AutoCloseable{
         if(!closed){ closed = true; client.close(); }
     }
 
-    private record Capture(CoreBuild core, ItemModule module, int capacity, int surfaceCapacity, int[] counts){}
+    private record Capture(CoreBuild core, ItemModule module, int capacity, int surfaceCapacity, long revision, int[] counts){}
 }
