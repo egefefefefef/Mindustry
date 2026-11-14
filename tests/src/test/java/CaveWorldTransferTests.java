@@ -1,4 +1,7 @@
+import arc.Core;
+import arc.assets.AssetManager;
 import mindustry.content.Blocks;
+import mindustry.game.Saves;
 import mindustry.content.Items;
 import mindustry.core.GameState.State;
 import mindustry.game.Team;
@@ -72,34 +75,46 @@ class CaveWorldTransferTests{
     }
 
     @Test
-    void regularSaveKeepsBothWorldsAndSaveSlotThroughReload(){
+    void regularSaveKeepsBothWorldsAndSaveSlotThroughReload() throws Exception{
         prepareTwoWorlds();
-        var slot = control.saves.addSave("cave-transition-test");
+        // The headless harness has no Control, so exercise the Saves listener
+        // separately instead of constructing the graphical Control module.
+        var previousAssets = Core.assets;
+        if(Core.assets == null) Core.assets = new AssetManager();
+        Saves saves = new Saves();
+        var file = saveDirectory.child("cave-transition-test.msav");
+        var slot = saves.new SaveSlot(file);
+        var current = Saves.class.getDeclaredField("current");
+        current.setAccessible(true);
         try{
-            assertSame(slot, control.saves.getCurrent());
+            current.set(saves, slot);
+            assertSame(slot, saves.getCurrent());
             CaveWorldTransfer.travel();
-            assertSame(slot, control.saves.getCurrent(), "World switch must not detach the current save");
+            assertSame(slot, saves.getCurrent(), "World switch must not detach the current save");
             Team.sharded.core().items.set(Items.copper, 55);
             world.tile(6, 6).setBlock(Blocks.graphitePress, Team.sharded);
-            slot.save();
+            SaveIO.save(file);
             logic.reset();
-            slot.load();
+            SaveIO.load(file);
             state.set(State.playing);
+            current.set(saves, slot);
             assertTrue(store.archive().inCave());
             assertSame(Blocks.graphitePress, world.tile(6, 6).block());
             assertEquals(55, Team.sharded.core().items.get(Items.copper));
             CaveWorldTransfer.travel();
-            assertSame(slot, control.saves.getCurrent());
+            assertSame(slot, saves.getCurrent());
             assertSame(Blocks.copperWall, world.tile(5, 5).block());
             assertEquals(55, Team.sharded.core().items.get(Items.copper));
-            slot.save();
-            slot.load();
+            SaveIO.save(file);
+            SaveIO.load(file);
             state.set(State.playing);
             CaveWorldTransfer.travel();
             assertSame(Blocks.graphitePress, world.tile(6, 6).block());
             assertEquals(55, Team.sharded.core().items.get(Items.copper));
         }finally{
-            slot.delete();
+            file.delete();
+            SaveIO.backupFileFor(file).delete();
+            Core.assets = previousAssets;
         }
     }
 
