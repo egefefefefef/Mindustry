@@ -40,6 +40,7 @@ public class Logic implements ApplicationListener{
 
     public Logic(){
         CaveSaveStore.install();
+        mindustry.game.caves.CaveBackground.install();
         CaveEntrances.install();
 
         Events.on(BlockDestroyEvent.class, event -> {

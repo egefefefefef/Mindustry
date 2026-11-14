@@ -93,7 +93,7 @@ published v1.3 release. For a local single-player custom game, turn on
 entrance** in the custom-game rules. The entrance appears on unoccupied dry
 ground near the player's core; click it to enter and click the cave exit to
 return. If no suitable ground is found nearby, no entrance is placed. The
-inactive world is paused. The two worlds share the core inventory; the cave's
+surface is paused while you are underground. The two worlds share the core inventory; the cave's
 storage limit is fixed to the surface core's capacity when the cave is created.
 Resources and structures are saved with the game when it is saved or autosaved;
 a transition alone is not a disk save. The new ores can be mined with a laser
@@ -102,6 +102,21 @@ allows an existing cave to be exited. Caves are not available in campaign,
 multiplayer or the editor. A save containing paired cave worlds cannot be
 hosted for multiplayer, even after returning to the surface. Back up important
 saves before testing.
+
+On the surface only, a limited background model approximates production from
+warmed-up, enabled standard drills connected to the cave core directly or by a
+non-branching chain of regular/titanium conveyors. Powered drills require an
+adequate solar-only power network with no non-drill loads. Rates exclude water
+boosts, temporarily boosted buildings and transport delay; drills with shared
+conveyor routes, fuel generators, batteries as the sole supply, bridges,
+routers, processors and other unsupported layouts do not run in the background.
+Products are credited directly to the shared core as game time passes, within
+both worlds' storage limits; this model does not animate or consume fuel or
+water. Other underground buildings, units and items on conveyors remain paused.
+Drill progress, resource counts and the approximate background plan persist in
+normal saves. While paused or after either cave toggle is disabled, background
+production stops. Existing paired saves start background production after their
+next visit to and exit from the cave.
 
 Open **Settings → Experimental features** to enable the optional automatic
 weather cycle for both local custom games and campaign. The toggle affects the

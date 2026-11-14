@@ -102,6 +102,9 @@ public final class CaveWorldTransfer{
         State previousState = state.getState();
         byte[] originSnapshot = store.captureWorld();
         byte[] targetSnapshot = archive.inactiveWorld();
+        CaveBackground background = CaveBackground.instance;
+        CaveBackground.Plan oldPlan = background.plan();
+        CaveBackground.Plan nextPlan = archive.inCave() ? CaveBackground.capture(team) : oldPlan;
         store.transferring(true);
         try{
             load(targetSnapshot);
@@ -113,12 +116,15 @@ public final class CaveWorldTransfer{
                 }
             }
             target.items.set(items);
+            if(!archive.inCave()) CaveBackground.apply(nextPlan);
             store.setArchive(new CaveArchive(!archive.inCave(), archive.seed(), originSnapshot));
+            background.setPlan(archive.inCave() ? nextPlan : null);
             state.set(previousState);
         }catch(Exception failure){
             try{
                 load(originSnapshot);
                 store.setArchive(archive);
+                background.setPlan(oldPlan);
                 state.set(previousState);
             }catch(Exception rollback){
                 failure.addSuppressed(rollback);
