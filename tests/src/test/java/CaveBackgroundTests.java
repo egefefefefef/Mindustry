@@ -135,10 +135,50 @@ class CaveBackgroundTests{
             drill.efficiency = 1f;
             assertSame(CaveContent.amethyst, drill.dominantItem);
             assertEquals(1, CaveBackground.capture(Team.sharded).size(), "Solar-powered laser and belts should be supported");
+            world.tile(75, 64).build.enabled = false;
+            assertEquals(0, CaveBackground.capture(Team.sharded).size(), "Disabled power must not produce");
+            world.tile(75, 64).build.enabled = true;
             CaveWorldTransfer.travel();
             int before = Team.sharded.core().items.get(CaveContent.amethyst);
             CaveBackground.instance.advance(1000);
             assertTrue(Team.sharded.core().items.get(CaveContent.amethyst) > before);
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void storageCapacityStopsProductionWithoutBankingOverflow(){
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Core.settings.put("experimental-caves", true);
+            state.rules.caves = true;
+            CaveWorldTransfer.createCave(1234);
+            prepareDrill(true);
+            int capacity = Team.sharded.core().storageCapacity;
+            CaveWorldTransfer.travel();
+            var core = Team.sharded.core();
+            int sharedCapacity = Math.min(capacity, core.storageCapacity);
+            core.items.set(Items.coal, sharedCapacity - 1);
+            CaveBackground.instance.advance(10000);
+            assertEquals(sharedCapacity, core.items.get(Items.coal));
+            CaveBackground.instance.advance(10000);
+            core.items.remove(Items.coal, 1);
+            CaveBackground.instance.advance(0.01f);
+            assertEquals(sharedCapacity - 1, core.items.get(Items.coal));
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void sharedConveyorInputsAreNotApproximated(){
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Core.settings.put("experimental-caves", true);
+            state.rules.caves = true;
+            CaveWorldTransfer.createCave(1234);
+            prepareDrill(true);
+            world.tile(68, 65).setBlock(Blocks.conveyor, Team.sharded, 3);
+            assertEquals(0, CaveBackground.capture(Team.sharded).size());
         }finally{
             Core.settings.put("experimental-caves", previous);
         }

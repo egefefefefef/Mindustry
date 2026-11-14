@@ -66,7 +66,7 @@ public final class CaveBackground implements CustomChunk{
     /** Snapshot supported production routes while the cave is still the active world. */
     public static Plan capture(Team team){
         CoreBuild core = team.core();
-        if(core == null) return null;
+        if(core == null || core.storageCapacity < 1) return null;
         Plan plan = new Plan(team.id, core.storageCapacity);
         IntSet used = new IntSet();
         for(Building b : mindustry.gen.Groups.build){
@@ -79,9 +79,11 @@ public final class CaveBackground implements CustomChunk{
             float maxRate = routeToCore(drill, core, route, used);
             if(maxRate <= 0 || !Float.isFinite(rate) || rate <= 0) continue;
             rate = Math.min(rate, maxRate);
+            double fraction = drill.progress / type.getDrillTime(drill.dominantItem);
+            if(!Float.isFinite(rate) || rate <= 0f || rate > 100f || !Double.isFinite(fraction)) continue;
             if(plan.entries.size >= maxDrills) break;
             plan.entries.add(new Entry(drill.pos(), drill.dominantItem.name, rate,
-                Math.max(0d, Math.min(0.999999d, drill.progress / type.getDrillTime(drill.dominantItem)))));
+                Math.max(0d, Math.min(0.999999d, fraction))));
             for(var iter = route.iterator(); iter.hasNext;) used.add(iter.next());
         }
         return plan;
