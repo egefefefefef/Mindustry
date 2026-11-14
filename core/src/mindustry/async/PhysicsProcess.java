@@ -171,6 +171,21 @@ public class PhysicsProcess implements AsyncProcess{
         return false;
     }
 
+    /** Wait for outstanding layer tasks before replacing the world. */
+    public void awaitPending(){
+        for(int i = 0; i < futures.size; i++){
+            try{
+                futures.items[i].get();
+            }catch(InterruptedException e){
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }catch(ExecutionException e){
+                throw new RuntimeException(e);
+            }
+        }
+        futures.clear();
+    }
+
     @Override
     public void reset(){
         diagnostics.reset();

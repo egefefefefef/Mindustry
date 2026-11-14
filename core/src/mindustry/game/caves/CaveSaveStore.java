@@ -16,6 +16,7 @@ public final class CaveSaveStore implements CustomChunk{
     private static boolean installed;
     private CaveArchive archive;
     private boolean writingSnapshot;
+    private boolean transferring;
 
     private CaveSaveStore(){}
 
@@ -27,6 +28,8 @@ public final class CaveSaveStore implements CustomChunk{
     }
 
     public CaveArchive archive(){ return archive; }
+    public boolean isTransferring(){ return transferring; }
+    void transferring(boolean transferring){ this.transferring = transferring; }
     public void setArchive(CaveArchive archive){ this.archive = archive; }
     public void clear(){ archive = null; }
 

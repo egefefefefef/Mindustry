@@ -117,7 +117,7 @@ public class Control implements ApplicationListener, Loadable{
             indicators.clear();
 
             hiscore = false;
-            saves.resetSave();
+            if(!mindustry.game.caves.CaveSaveStore.instance.isTransferring()) saves.resetSave();
         });
 
         Events.on(WaveEvent.class, event -> {

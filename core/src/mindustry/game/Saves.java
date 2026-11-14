@@ -39,7 +39,7 @@ public class Saves{
         Core.assets.setLoader(Texture.class, ".spreview", new SavePreviewLoader());
 
         Events.on(StateChangeEvent.class, event -> {
-            if(event.to == State.menu){
+            if(event.to == State.menu && !mindustry.game.caves.CaveSaveStore.instance.isTransferring()){
                 totalPlaytime = 0;
                 lastTimestamp = 0;
                 current = null;
