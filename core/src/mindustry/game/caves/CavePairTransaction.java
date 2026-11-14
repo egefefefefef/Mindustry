@@ -60,14 +60,18 @@ final class CavePairTransaction{
         return new Capture(core, core.items, capacity, core.storageCapacity, core.items.revision(), counts);
     }
 
-    void publish(Capture before, CavePersistentClient.Checkpoint response) throws IOException{
-        int[] result = response.counts();
-        CaveArchive next = new CaveArchive(false, expected.seed(), response.snapshot());
+    void verify(Capture before) throws IOException{
         Capture after = capture();
         if(before.core != after.core || before.module != after.module || before.capacity != after.capacity ||
             before.surfaceCapacity != after.surfaceCapacity || before.revision != after.revision || !Arrays.equals(before.counts, after.counts)){
             throw new IOException("Surface changed during cave step; response discarded");
         }
+    }
+
+    void publish(Capture before, CavePersistentClient.Checkpoint response) throws IOException{
+        int[] result = response.counts();
+        CaveArchive next = new CaveArchive(false, expected.seed(), response.snapshot());
+        verify(before);
         // All values and item IDs were validated. Reductions first keep the
         // module's aggregate total within the integer range during publication.
         for(int i = 0; i < result.length; i++) if(result[i] < before.counts[i]) before.module.set(content.item(i), result[i]);

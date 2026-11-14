@@ -67,6 +67,13 @@ all game state and save access on the game thread. Snapshot copies and response
 publication still do work on that thread. Save durability and wall-clock timer
 semantics remain unresolved; the item revision's performance cost is unmeasured.
 
+`CaveTickBudget` is a separate, game-thread-only accounting prototype for
+fractional elapsed ticks and bounded step reservations. Failed or cancelled
+reservations keep their ticks, and a budget snapshot includes in-flight ticks
+for retry. It is not wired to the async bridge, the game clock, or the save
+format. Frequent surface changes can repeatedly invalidate work; a production
+scheduler must prove eventual progress without dropping time or blocking play.
+
 The worker classes are packaged in the desktop application but neither prototype
 is launched or connected to gameplay. There is no production live inventory
 synchronization, atomic two-world disk commit, crash recovery, pause

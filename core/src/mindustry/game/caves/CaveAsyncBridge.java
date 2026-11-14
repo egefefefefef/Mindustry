@@ -57,8 +57,13 @@ public final class CaveAsyncBridge implements AutoCloseable{
     public Status poll() throws IOException{
         ensureUsable();
         if(pending == null) return Status.idle;
-        if(!pending.isDone()) return Status.pending;
         try{
+            // Reject a stale or paused session immediately, without waiting for
+            // the worker to finish a result that can no longer be published.
+            if(!pending.isDone()){
+                transaction.verify(before);
+                return Status.pending;
+            }
             var result = pending.get(); // already complete
             transaction.publish(before, result);
             pending = null;
