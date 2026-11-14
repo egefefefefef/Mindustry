@@ -71,6 +71,8 @@ public class ContentLoader{
         SectorPresets.load();
         SerpuloTechTree.load();
         ErekirTechTree.load();
+        // Append new content after existing IDs to preserve old content ordering.
+        CaveContent.load();
     }
 
     /** Creates mod content, if applicable. */
