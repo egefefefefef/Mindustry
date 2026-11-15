@@ -29,6 +29,14 @@ runs:
           exit 1
         }
 
+    - name: Report cave prototype step cost
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        if test -f tests/build/cave-step-measurement.txt; then
+          echo "::notice::$(cat tests/build/cave-step-measurement.txt)"
+        fi
+
     - name: Upload Java test reports
       if: ${{ always() }}
       uses: actions/upload-artifact@v7

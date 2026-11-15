@@ -439,6 +439,34 @@ class CaveSimulationWorkerTests{
         }
     }
 
+    @Test void measurePairedStepCostForSmallCave() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareCave();
+            int capacity = Team.sharded.core().storageCapacity;
+            int[] counts = new int[content.items().size];
+            for(var item : content.items()) counts[item.id] = Team.sharded.core().items.get(item);
+            try(var client = launchRealClient(input)){
+                for(int i = 0; i < 5; i++) counts = client.stepCheckpoint(1, capacity, counts).counts();
+                long started = System.nanoTime();
+                long largest = 0;
+                for(int i = 0; i < 30; i++){
+                    long step = System.nanoTime();
+                    counts = client.stepCheckpoint(1, capacity, counts).counts();
+                    largest = Math.max(largest, System.nanoTime() - step);
+                }
+                double average = (System.nanoTime() - started) / 30_000_000d;
+                Path result = Path.of("../../tests/build/cave-step-measurement.txt");
+                Files.createDirectories(result.getParent());
+                Files.writeString(result, String.format(Locale.ROOT,
+                    "Small 128x128 cave; 30 one-tick checkpoints: mean %.2f ms, max %.2f ms; not a gameplay or Windows benchmark.",
+                    average, largest / 1_000_000d));
+            }
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
     @Test void repeatedPairedCheckpointsMatchUninterruptedWorkerForDrillAndPower() throws Exception{
         boolean previous = Core.settings.getBool("experimental-caves", false);
         try{
