@@ -74,7 +74,7 @@ public final class CaveContent{
             requirements(Category.production, localCaves, with(Items.copper, 130, Items.silicon, 120, Items.titanium, 90, adamantite, 80, ruby, 100));
             size = 4;
             tier = 7;
-            drillTime = 65f;
+            drillTime = 50f;
             hardnessDrillMultiplier = 10f;
             drawRim = true;
             hasPower = true;
