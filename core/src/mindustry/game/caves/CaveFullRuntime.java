@@ -5,6 +5,7 @@ import arc.Events;
 import arc.util.Log;
 import mindustry.content.CaveContent;
 import mindustry.core.GameState.State;
+import mindustry.core.PerfCounter;
 import mindustry.game.EventType.ResetEvent;
 import mindustry.game.Team;
 
@@ -41,6 +42,7 @@ public final class CaveFullRuntime{
     private Session session;
     private CavePairedBridge bridge;
     private CaveArchive current;
+    private boolean failed;
 
     public CaveFullRuntime(Launcher launcher, BooleanSupplier enabled){
         if(launcher == null || enabled == null) throw new IllegalArgumentException("Missing cave runtime configuration");
@@ -61,6 +63,16 @@ public final class CaveFullRuntime{
             Core.settings.getBool("experimental-caves-full", true);
     }
 
+    /** Status for diagnostics; active means the current worker session has been established. */
+    public String diagnosticStatus(){
+        var archive = CaveSaveStore.instance.archive();
+        if(!enabled.getAsBoolean() || !CaveContent.available() || archive == null || archive.inCave()) return "off";
+        if(CaveBackground.instance.plan() != null) return "legacy";
+        if(failed) return "failed";
+        if(state.isPaused()) return "paused";
+        return bridge == null ? "starting" : "active";
+    }
+
     /** Called before the surface logic update. False means do not advance the surface this frame. */
     public boolean beforeUpdate(float delta){
         if(state == null || !state.isPlaying()) return true;
@@ -77,14 +89,17 @@ public final class CaveFullRuntime{
             if(clock.snapshot().ticks() > 0){
                 simulate(clock, archive);
                 CaveTickStore.instance.set(clock.snapshot());
+                failed = false;
                 return false;
             }
             clock.advance(delta, true);
             if(clock.snapshot().ticks() > 0) simulate(clock, archive);
             CaveTickStore.instance.set(clock.snapshot());
+            failed = false;
             return true;
         }catch(IOException | RuntimeException failure){
             close();
+            failed = true;
             // The client may already have started this surface frame's async
             // physics work; quiesce it before changing the state to paused.
             try{
@@ -106,6 +121,7 @@ public final class CaveFullRuntime{
     private void simulate(CaveTickBudget clock, CaveArchive archive) throws IOException{
         var ticket = clock.reserve(CavePersistentProtocol.maxStepTicks);
         if(ticket == null) return;
+        PerfCounter.caveSimulation.begin();
         try{
             if(bridge == null){
                 if(mods != null && mods.list().contains(mod -> mod.enabled())){
@@ -124,6 +140,8 @@ public final class CaveFullRuntime{
         }catch(IOException | RuntimeException failure){
             clock.release(ticket);
             throw failure;
+        }finally{
+            PerfCounter.caveSimulation.end();
         }
     }
 
@@ -131,5 +149,6 @@ public final class CaveFullRuntime{
         if(bridge != null){ bridge.close(); bridge = null; }
         if(session != null){ session.close(); session = null; }
         current = null;
+        failed = false;
     }
 }

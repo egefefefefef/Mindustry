@@ -119,7 +119,12 @@ limited approximate model runs after a cave visit: only supported warmed-up
 drills with simple direct or conveyor routes produce resources, and powered
 drills require adequate solar-only power. It does not run other cave buildings,
 transport or units and does not consume fuel or water. The two modes do not run
-simultaneously. Pausing or disabling caves stops background work.
+simultaneously. Pausing or disabling caves stops background work. By default,
+the game also pauses when the window loses focus; in that case the cave stops
+until play resumes. The performance overlay reports `caveSimulation (in
+stateUpdate)` as a subset of `stateUpdate`, including time waiting for the worker,
+not as a second cost to add. Its cave status distinguishes the full simulation,
+the legacy approximation and pause.
 
 Open **Settings → Experimental features** to enable the optional automatic
 weather cycle for both local custom games and campaign. The toggle affects the

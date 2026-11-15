@@ -15,6 +15,7 @@ import mindustry.core.*;
 import static mindustry.Vars.unitPhysics;
 import mindustry.graphics.*;
 import mindustry.ui.*;
+import mindustry.game.caves.CaveFullRuntime;
 
 import static mindustry.core.PerfCounter.*;
 
@@ -66,8 +67,11 @@ public class PerformanceFragment{
                 for(PerfCounter counter : all){
                     if(Structs.contains(displayedCounters, counter)) continue;
 
-                    i.label(() -> counter.name() + ": " + Strings.fixed(counter.valueMs(), 1)).style(Styles.outlineLabel).with(l -> l.setFontScale(fscl)).color(color(counter)).row();
+                    i.label(() -> (counter == caveSimulation ? "caveSimulation (in stateUpdate)" : counter.name()) + ": " + Strings.fixed(counter.valueMs(), 1)).style(Styles.outlineLabel).with(l -> l.setFontScale(fscl)).color(color(counter)).row();
                 }
+
+                i.label(() -> Core.bundle.format("caves.diagnostic", Core.bundle.get("caves.diagnostic." + CaveFullRuntime.instance.diagnosticStatus())))
+                    .style(Styles.outlineLabel).with(l -> l.setFontScale(fscl)).row();
 
                 // These are counts, not times: each collision layer runs independently.
                 i.add().height(10f).row();

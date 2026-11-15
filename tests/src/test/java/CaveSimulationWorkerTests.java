@@ -9,6 +9,7 @@ import mindustry.gen.Groups;
 import mindustry.world.meta.Env;
 import mindustry.world.blocks.production.Drill.DrillBuild;
 import mindustry.core.GameState.State;
+import mindustry.core.PerfCounter;
 import mindustry.game.Team;
 import mindustry.game.caves.CaveSaveStore;
 import mindustry.game.caves.CaveArchive;
@@ -816,14 +817,20 @@ class CaveSimulationWorkerTests{
             Path input = prepareSurfaceArchive();
             var runtime = runtimeWithRealWorker(input);
             try{
+                assertEquals("starting", runtime.diagnosticStatus());
+                assertFalse(Arrays.asList(PerfCounter.displayedCounters).contains(PerfCounter.caveSimulation),
+                    "Nested timing must not be counted twice in the performance bar");
                 Team.sharded.core().items.set(Items.copper, 50);
                 for(int i = 0; i < 20; i++){
                     if(i == 10) Team.sharded.core().items.set(Items.copper, 40);
                     assertTrue(runtime.beforeUpdate(60));
                 }
+                assertEquals("active", runtime.diagnosticStatus());
+                assertTrue(PerfCounter.caveSimulation.latestValueNs() > 0, "Worker and checkpoint timing must be recorded");
                 assertTrue(runtime.beforeUpdate(0.5f));
                 var pausedArchive = CaveSaveStore.instance.archive();
                 state.set(State.paused);
+                assertEquals("paused", runtime.diagnosticStatus());
                 assertTrue(runtime.beforeUpdate(60));
                 assertSame(pausedArchive, CaveSaveStore.instance.archive());
                 assertEquals(0.5, CaveTickStore.instance.snapshot().fraction());
@@ -865,6 +872,7 @@ class CaveSimulationWorkerTests{
                 throw new IOException("Full simulation must not start while legacy plan exists");
             }, () -> true);
             try{
+                assertEquals("legacy", runtime.diagnosticStatus());
                 assertTrue(runtime.beforeUpdate(60));
                 assertEquals(0, launches[0]);
                 assertSame(legacy, CaveBackground.instance.plan());
@@ -888,6 +896,7 @@ class CaveSimulationWorkerTests{
             try{
                 assertFalse(runtime.beforeUpdate(1));
                 assertTrue(state.isPaused());
+                assertEquals("failed", runtime.diagnosticStatus());
                 assertSame(archive, CaveSaveStore.instance.archive());
                 assertEquals(50, surface.items.get(Items.copper));
                 assertEquals(0, CaveTickStore.instance.snapshot().ticks());
