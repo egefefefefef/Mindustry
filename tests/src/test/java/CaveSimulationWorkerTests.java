@@ -822,6 +822,12 @@ class CaveSimulationWorkerTests{
                     assertTrue(runtime.beforeUpdate(60));
                 }
                 assertTrue(runtime.beforeUpdate(0.5f));
+                var pausedArchive = CaveSaveStore.instance.archive();
+                state.set(State.paused);
+                assertTrue(runtime.beforeUpdate(60));
+                assertSame(pausedArchive, CaveSaveStore.instance.archive());
+                assertEquals(0.5, CaveTickStore.instance.snapshot().fraction());
+                state.set(State.playing);
                 int produced = Team.sharded.core().items.get(CaveContent.amethyst);
                 assertTrue(produced > 0);
                 assertEquals(0.5, CaveTickStore.instance.snapshot().fraction());

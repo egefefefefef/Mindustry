@@ -63,6 +63,7 @@ public final class CaveFullRuntime{
 
     /** Called before the surface logic update. False means do not advance the surface this frame. */
     public boolean beforeUpdate(float delta){
+        if(state == null || !state.isPlaying()) return true;
         var archive = CaveSaveStore.instance.archive();
         if(!enabled.getAsBoolean() || !CaveContent.available() || archive == null || archive.inCave() ||
             CaveSaveStore.instance.isTransferring() || CaveBackground.instance.plan() != null){
@@ -84,6 +85,13 @@ public final class CaveFullRuntime{
             return true;
         }catch(IOException | RuntimeException failure){
             close();
+            // The client may already have started this surface frame's async
+            // physics work; quiesce it before changing the state to paused.
+            try{
+                if(asyncCore != null) asyncCore.awaitWorldTasks();
+            }catch(RuntimeException quiesce){
+                failure.addSuppressed(quiesce);
+            }
             Log.err(failure);
             // The failed step was not committed; leave the previous clock and
             // archive in place and stop the surface until the player responds.
