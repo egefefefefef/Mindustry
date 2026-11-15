@@ -97,7 +97,9 @@ surface is paused while you are underground. The two worlds share the core inven
 storage limit is fixed to the surface core's capacity when the cave is created.
 Resources and structures are saved with the game when it is saved or autosaved;
 a transition alone is not a disk save. The new ores can be mined with a laser
-drill or better. Disabling either switch prevents entering again, but still
+drill or better. Newly generated caves also contain ruby, used for the ruby
+drill and conveyor; existing generated caves are not regenerated and will not
+automatically gain ruby. Disabling either switch prevents entering again, but still
 allows an existing cave to be exited. Caves are not available in campaign,
 multiplayer or the editor. A save containing paired cave worlds cannot be
 hosted for multiplayer, even after returning to the surface. Back up important
@@ -116,7 +118,7 @@ visit and exit.
 
 If full simulation is disabled or unavailable (including mobile), the earlier
 limited approximate model runs after a cave visit: only supported warmed-up
-drills with simple direct or conveyor routes produce resources, and powered
+drills with simple direct or standard, titanium, or ruby conveyor routes produce resources, and powered
 drills require adequate solar-only power. It does not run other cave buildings,
 transport or units and does not consume fuel or water. The two modes do not run
 simultaneously. Pausing or disabling caves stops background work. By default,

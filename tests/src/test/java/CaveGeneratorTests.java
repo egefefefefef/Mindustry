@@ -40,6 +40,7 @@ class CaveGeneratorTests{
             assertTrue(counts[Tile.thorium.ordinal()] >= 16);
             assertTrue(counts[Tile.amethyst.ordinal()] >= 12);
             assertTrue(counts[Tile.adamantite.ordinal()] >= 8);
+            assertTrue(counts[Tile.ruby.ordinal()] >= 8);
 
             boolean[] seen = new boolean[size * size];
             ArrayDeque<Integer> queue = new ArrayDeque<>();

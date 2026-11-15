@@ -4,7 +4,7 @@ import java.util.*;
 
 /** Deterministic cave layout; does not access or mutate the current game world. */
 public final class CaveGenerator{
-    public enum Tile { wall, floor, water, coal, titanium, thorium, amethyst, adamantite }
+    public enum Tile { wall, floor, water, coal, titanium, thorium, amethyst, adamantite, ruby }
 
     public static final int minSize = 64, maxSize = 256;
 
@@ -70,12 +70,14 @@ public final class CaveGenerator{
             }
         }
         // Place rarer ores first so abundant coal cannot overwrite them.
+        veins(out, random, Tile.ruby, 4, 2);
         veins(out, random, Tile.adamantite, 5, 2);
         veins(out, random, Tile.amethyst, 8, 2);
         veins(out, random, Tile.thorium, 10, 3);
         veins(out, random, Tile.titanium, 15, 3);
         veins(out, random, Tile.coal, 38, 4);
         ensureMinimum(out, Tile.water, 8);
+        ensureMinimum(out, Tile.ruby, 8);
         ensureMinimum(out, Tile.adamantite, 8);
         ensureMinimum(out, Tile.amethyst, 12);
         ensureMinimum(out, Tile.thorium, 16);

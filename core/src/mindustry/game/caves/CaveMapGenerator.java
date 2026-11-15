@@ -24,6 +24,7 @@ public final class CaveMapGenerator{
                     case thorium -> Blocks.oreThorium;
                     case amethyst -> CaveContent.oreAmethyst;
                     case adamantite -> CaveContent.oreAdamantite;
+                    case ruby -> CaveContent.oreRuby;
                     default -> Blocks.air;
                 };
                 tiles.set(x, y, new Tile(x, y, floor, ore, wall));

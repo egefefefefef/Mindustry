@@ -16,7 +16,7 @@ class CaveMapGeneratorTests{
     void generatesActualMineableTerrainAndInteriorWater(){
         logic.reset();
         world.loadGenerator(128, 128, tiles -> CaveMapGenerator.populate(tiles, 12345));
-        int water = 0, coal = 0, titanium = 0, thorium = 0, amethyst = 0, adamantite = 0;
+        int water = 0, coal = 0, titanium = 0, thorium = 0, amethyst = 0, adamantite = 0, ruby = 0;
         var laser = (Drill)Blocks.laserDrill;
         for(int y = 0; y < world.height(); y++) for(int x = 0; x < world.width(); x++){
             var tile = world.tile(x, y);
@@ -26,6 +26,7 @@ class CaveMapGeneratorTests{
             if(tile.overlay() == Blocks.oreThorium) thorium++;
             if(tile.overlay() == CaveContent.oreAmethyst){ amethyst++; assertTrue(laser.canMine(tile)); }
             if(tile.overlay() == CaveContent.oreAdamantite){ adamantite++; assertTrue(laser.canMine(tile)); }
+            if(tile.overlay() == CaveContent.oreRuby){ ruby++; assertSame(CaveContent.ruby, tile.drop()); assertTrue(laser.canMine(tile)); }
         }
         assertTrue(water >= 8);
         assertTrue(coal >= 40);
@@ -33,6 +34,7 @@ class CaveMapGeneratorTests{
         assertTrue(thorium >= 16);
         assertTrue(amethyst >= 12);
         assertTrue(adamantite >= 8);
+        assertTrue(ruby >= 8);
         assertSame(Blocks.stone, world.tile(64, 64).floor());
         assertSame(Blocks.air, world.tile(64, 64).block());
     }
