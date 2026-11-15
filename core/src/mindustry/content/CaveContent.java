@@ -74,12 +74,12 @@ public final class CaveContent{
             requirements(Category.production, localCaves, with(Items.copper, 130, Items.silicon, 120, Items.titanium, 90, adamantite, 80, ruby, 100));
             size = 4;
             tier = 7;
-            drillTime = 50f;
+            drillTime = 56f;
             hardnessDrillMultiplier = 10f;
             drawRim = true;
             hasPower = true;
             itemCapacity = 30;
-            liquidBoostIntensity = 2.5f;
+            liquidBoostIntensity = 2.3f;
             consumePower(6f);
             consumeLiquid(Liquids.water, 0.15f).boost();
         }};
