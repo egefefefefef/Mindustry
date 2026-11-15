@@ -486,6 +486,11 @@ jobs:
         jlink --add-modules ALL-MODULE-PATH --strip-debug --no-man-pages --no-header-files --compress=2 --output build/package/Mindustry/jre
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         if (-not (Test-Path build/package/Mindustry/jre/bin/javaw.exe)) { throw 'javaw.exe missing' }
+    - name: Verify bundled cave worker launches
+      shell: pwsh
+      run: |
+        & build/package/Mindustry/jre/bin/java.exe -cp build/package/Mindustry/Mindustry.jar mindustry.server.CavePersistentService 2>&1 | Out-String | Write-Host
+        if ($LASTEXITCODE -ne 2) { throw "Cave worker launch failed: $LASTEXITCODE" }
     - name: Verify packaged native physics and diagnostics
       shell: bash
       env:

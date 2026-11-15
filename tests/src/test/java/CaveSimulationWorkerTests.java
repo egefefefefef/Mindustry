@@ -846,6 +846,30 @@ class CaveSimulationWorkerTests{
         }
     }
 
+    @Test void gameRuntimeDoesNotRunAlongsideLegacyApproximation() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            prepareCave();
+            CaveWorldTransfer.travel();
+            var legacy = CaveBackground.instance.plan();
+            assertNotNull(legacy, "A legacy surface save has an approximate plan");
+            int[] launches = {0};
+            var runtime = new CaveFullRuntime((snapshot, names, team) -> {
+                launches[0]++;
+                throw new IOException("Full simulation must not start while legacy plan exists");
+            }, () -> true);
+            try{
+                assertTrue(runtime.beforeUpdate(60));
+                assertEquals(0, launches[0]);
+                assertSame(legacy, CaveBackground.instance.plan());
+            }finally{
+                runtime.close();
+            }
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
     @Test void gameRuntimeFailurePausesWithoutPublishingOrChargingTime() throws Exception{
         boolean previous = Core.settings.getBool("experimental-caves", false);
         try{
