@@ -16,7 +16,7 @@ import java.nio.file.*;
 import static mindustry.Vars.*;
 
 /**
- * Test-only persistent isolated cave process. No gameplay client launches it.
+ * Persistent isolated cave process used by the experimental desktop runtime.
  * Requests are strictly sequential: an accepted step is not rollbackable;
  * a caller must abort the whole session if it cannot apply the response.
  */

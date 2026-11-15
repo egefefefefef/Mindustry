@@ -149,6 +149,9 @@ public final class CaveSimulationWorker{
         Vars.net = new Net(null);
         Vars.tree = new FileTree();
         Vars.init();
+        // The parent permits cave content only with this preference enabled;
+        // mirror it in the isolated runtime instead of hiding cave items.
+        Core.settings.put("experimental-caves", true);
         Core.graphics = new MockGraphics(){
             @Override public float getDeltaTime(){ return 1f / 60f; }
         };

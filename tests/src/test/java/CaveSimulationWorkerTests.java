@@ -18,6 +18,9 @@ import mindustry.game.caves.CavePairedBridge;
 import mindustry.game.caves.CaveAsyncBridge;
 import mindustry.game.caves.CaveAsyncScheduler;
 import mindustry.game.caves.CaveTickBudget;
+import mindustry.game.caves.CaveTickStore;
+import mindustry.game.caves.CaveFullRuntime;
+import mindustry.game.caves.CaveWorkerSession;
 import mindustry.game.caves.CaveWorldTransfer;
 import mindustry.game.caves.CaveInventoryLedger;
 import mindustry.game.caves.CavePersistentClient;
@@ -787,6 +790,105 @@ class CaveSimulationWorkerTests{
             }
         }finally{
             state.set(State.playing);
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    private CaveFullRuntime runtimeWithRealWorker(Path input){
+        return new CaveFullRuntime((snapshot, names, team) -> {
+            Files.write(input, snapshot);
+            CavePersistentClient client;
+            try{
+                client = launchRealClient(input);
+            }catch(Exception error){
+                throw new IOException(error);
+            }
+            return new CaveFullRuntime.Session(){
+                @Override public CavePersistentClient client(){ return client; }
+                @Override public void close(){ client.close(); }
+            };
+        }, () -> true);
+    }
+
+    @Test void gameRuntimeRunsRealCaveAndPersistsFractionalClockAndWorlds() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Path input = prepareSurfaceArchive();
+            var runtime = runtimeWithRealWorker(input);
+            try{
+                Team.sharded.core().items.set(Items.copper, 50);
+                for(int i = 0; i < 20; i++){
+                    if(i == 10) Team.sharded.core().items.set(Items.copper, 40);
+                    assertTrue(runtime.beforeUpdate(60));
+                }
+                assertTrue(runtime.beforeUpdate(0.5f));
+                int produced = Team.sharded.core().items.get(CaveContent.amethyst);
+                assertTrue(produced > 0);
+                assertEquals(0.5, CaveTickStore.instance.snapshot().fraction());
+                runtime.close();
+                Fi save = new Fi(directory.resolve("runtime-save.msav").toFile());
+                SaveIO.save(save);
+                SaveIO.load(save);
+                state.set(State.playing);
+                assertEquals(0.5, CaveTickStore.instance.snapshot().fraction());
+                assertEquals(produced, Team.sharded.core().items.get(CaveContent.amethyst));
+                CaveWorldTransfer.travel();
+                assertSame(Blocks.router, world.tile(69, 64).block());
+                assertTrue(world.tile(74, 63).build.items.get(Items.coal) < 10);
+                assertEquals(40, Team.sharded.core().items.get(Items.copper));
+                assertEquals(produced, Team.sharded.core().items.get(CaveContent.amethyst));
+                assertEquals(0.5, CaveTickStore.instance.snapshot().fraction(), "Travel must preserve the cave clock");
+            }finally{
+                runtime.close();
+            }
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void gameRuntimeFailurePausesWithoutPublishingOrChargingTime() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            prepareSurfaceArchive();
+            var archive = CaveSaveStore.instance.archive();
+            var surface = Team.sharded.core();
+            surface.items.set(Items.copper, 50);
+            CaveTickStore.instance.set(new CaveTickBudget.Snapshot(0, 0.25));
+            var runtime = new CaveFullRuntime((snapshot, names, team) -> { throw new IOException("injected failure"); }, () -> true);
+            try{
+                assertFalse(runtime.beforeUpdate(1));
+                assertTrue(state.isPaused());
+                assertSame(archive, CaveSaveStore.instance.archive());
+                assertEquals(50, surface.items.get(Items.copper));
+                assertEquals(0, CaveTickStore.instance.snapshot().ticks());
+                assertEquals(0.25, CaveTickStore.instance.snapshot().fraction());
+            }finally{
+                runtime.close();
+            }
+        }finally{
+            state.set(State.playing);
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void packagedLauncherStartsRealWorker() throws Exception{
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        String originalClasspath = System.getProperty("java.class.path");
+        try{
+            Path input = prepareCave();
+            int capacity = Team.sharded.core().storageCapacity;
+            String[] names = new String[content.items().size];
+            int[] counts = new int[names.length];
+            for(var item : content.items()){
+                names[item.id] = item.name;
+                counts[item.id] = Team.sharded.core().items.get(item);
+            }
+            System.setProperty("java.class.path", System.getProperty("cave.worker.test.classpath"));
+            try(var session = CaveWorkerSession.launch(Files.readAllBytes(input), names, Team.sharded.id)){
+                assertNotNull(session.client().stepCheckpoint(1, capacity, counts).snapshot());
+            }
+        }finally{
+            if(originalClasspath != null) System.setProperty("java.class.path", originalClasspath);
             Core.settings.put("experimental-caves", previous);
         }
     }

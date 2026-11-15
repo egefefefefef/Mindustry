@@ -1,8 +1,9 @@
 # Full cave background simulation: implementation notes
 
-Status: **not implemented**. The currently enabled `CaveBackground` is an
-approximation and must not be described as a full simulation. Nothing in this
-note enables a second simulation or alters existing saves.
+Status: **experimental desktop integration**. `CaveFullRuntime` now runs the
+isolated worker before surface updates when the new setting is enabled; it is
+not verified as equivalent for every mechanic, mod or platform. The legacy
+`CaveBackground` remains an approximation and is never run alongside it.
 
 ## Why isolation is required
 
@@ -20,7 +21,7 @@ fixed ticks before writing another snapshot. An optional versioned inventory
 request and response identify items by name and bind both files to the input
 and output snapshots using SHA-256. These are uncommitted proposals; tests
 exercise discarding a stale result and retrying from the previous snapshot.
-`CavePersistentService` is a second test-only prototype that retains the real
+`CavePersistentService` retains the real
 cave world in an isolated process across sequential commands instead of starting
 and loading a new JVM each step. The fixed-step loop drains Arc's posted-task
 queue and increments frame IDs; before a checkpoint it runs the next queued
@@ -43,16 +44,16 @@ visible pauses and is not suitable for production gameplay. Integration tests
 manually disable the approximate model and publish a checkpoint before a normal
 save and travel; no production path does so yet.
 
-`CavePairedBridge` is another synchronous experiment. Its combined worker
+`CavePairedBridge` is the synchronous bridge used by the desktop runtime. Its combined worker
 step/checkpoint response lets it allocate the next archive before publishing
 both it and the corresponding core counts on the owning thread. It refuses a
 mismatched initial snapshot, a concurrent change or an active approximate
 plan; a failed step leaves the last published archive available for a worker
 restart. This only holds when all world, save and archive access is serialized
-on the owning thread. It is not a durable disk transaction, does not deal with
-unsaved progress after a game crash, and does not yet handle lifecycle, worker
-launch, asynchronous scheduling, or performance. In particular, making a full
-snapshot every step can be expensive and has not been measured.
+on the owning thread. It is not a durable disk transaction and does not recover
+unsaved progress after a game crash. Lifecycle and worker launch are handled by
+the experimental integration; scheduling remains synchronous. In particular,
+making a full snapshot every step can be expensive.
 
 `CaveAsyncBridge` is a single-flight, game-thread-publication prototype: IPC
 runs on a daemon thread, and polling does not wait for a worker response. The
@@ -82,11 +83,16 @@ shared-resource behavior. Exact interleaving needs a defined timeline, such as
 resource-operation logging/replay or another coordination scheme, before this
 can be enabled as a full simulation.
 
-The worker classes are packaged in the desktop application but neither prototype
-is launched or connected to gameplay. There is no production live inventory
-synchronization, atomic two-world disk commit, crash recovery, pause
-coordination, or performance measurement. Passing isolated tests is not proof
-of full simulation parity.
+The desktop runtime launches the packaged worker, publishes a checkpoint with
+the core inventory before the surface frame and saves the fractional cave clock
+with the paired save. It closes the worker across resets and switches; failure
+pauses the game rather than falling back to an old cave. IPC and checkpointing
+are synchronous, so gameplay can stall. A small 128-by-128 test cave averaged
+5.56 ms per one-tick checkpoint on one Linux CI runner; this is not a Windows,
+large-world or frame-time benchmark. The legacy approximate plan is retained
+until its next cave visit, then the new mode takes over. Mobile retains the old
+approximation. Full parity, mod support, durable crash recovery and performance
+remain unproven; passing isolated tests is not proof of equivalence.
 
 ## Required transaction boundary
 

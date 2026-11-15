@@ -8,7 +8,7 @@ import java.util.function.Supplier;
 import static mindustry.Vars.*;
 
 /**
- * Experimental synchronous paired publication, NOT installed in gameplay.
+ * Experimental synchronous paired publication, used by the desktop cave runtime.
  * The caller must exclusively own the client and serialize all world, archive,
  * inventory and save operations on the constructing game thread. A committed
  * step updates the real core and inactive archive together at that boundary;

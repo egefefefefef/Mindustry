@@ -3,6 +3,8 @@ import mindustry.core.GameState.State;
 import mindustry.game.Team;
 import mindustry.game.caves.CaveArchive;
 import mindustry.game.caves.CaveSaveStore;
+import mindustry.game.caves.CaveTickStore;
+import mindustry.game.caves.CaveTickBudget;
 import mindustry.io.SaveIO;
 import mindustry.io.SaveOptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -37,6 +39,26 @@ class CaveSaveStoreTests{
         SaveIO.load(new InflaterInputStream(new ByteArrayInputStream(snapshot)), world.context);
         assertSame(Blocks.copperWall, world.tile(5, 5).block());
         assertNull(store.archive(), "Nested snapshot must omit the cave archive");
+    }
+
+    @Test
+    void caveClockRoundTripsAndInvalidInputDoesNotReplaceIt() throws Exception{
+        CaveSaveStore.instance.setArchive(new CaveArchive(false, 1, CaveSaveStore.instance.captureWorld()));
+        CaveTickStore.instance.set(new CaveTickBudget.Snapshot(4, 0.75));
+        var save = new ByteArrayOutputStream();
+        SaveIO.write(new DeflaterOutputStream(save), new SaveOptions());
+        logic.reset();
+        assertEquals(0, CaveTickStore.instance.snapshot().ticks());
+        SaveIO.load(new InflaterInputStream(new ByteArrayInputStream(save.toByteArray())), world.context);
+        assertEquals(4, CaveTickStore.instance.snapshot().ticks());
+        assertEquals(0.75, CaveTickStore.instance.snapshot().fraction());
+        var invalid = new ByteArrayOutputStream();
+        try(var out = new DataOutputStream(invalid)){
+            out.writeInt(1); out.writeLong(-1); out.writeDouble(0.5);
+        }
+        assertThrows(IOException.class, () -> CaveTickStore.instance.read(new DataInputStream(new ByteArrayInputStream(invalid.toByteArray()))));
+        assertEquals(4, CaveTickStore.instance.snapshot().ticks());
+        assertFalse(CaveTickStore.instance.writeNet());
     }
 
     @Test

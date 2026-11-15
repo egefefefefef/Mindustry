@@ -421,6 +421,7 @@ public class SettingsMenuDialog extends BaseDialog{
         }));
         experimental.checkPref("experimental-native-physics", mindustry.core.Version.nativePhysicsDefault);
         experimental.checkPref("experimental-caves", false);
+        if(!mobile) experimental.checkPref("experimental-caves-full", true);
         game.checkPref("savecreate", true);
         game.checkPref("blockreplace", true);
         game.checkPref("conveyorpathfinding", true);

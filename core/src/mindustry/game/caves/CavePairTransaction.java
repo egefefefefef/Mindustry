@@ -36,7 +36,7 @@ final class CavePairTransaction{
     private void checkContext() throws IOException{
         if(state == null || !state.isGame() || state.isPaused() || state.rules.caveInterior || state.isCampaign() || state.isEditor() ||
             net == null || net.active() || store.isTransferring() || store.archive() != expected ||
-            CaveBackground.instance.plan() != null || (control != null && control.saves != null && control.saves.isSaving())){
+            CaveBackground.instance.plan() != null){
             throw new IOException("Cave session context changed");
         }
     }

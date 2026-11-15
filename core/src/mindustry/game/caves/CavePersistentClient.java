@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * Internal prototype IPC client. Not connected to game state or the save system.
+ * Internal IPC client used by the experimental desktop cave runtime.
  * Calls are sequential and bounded by a timeout. A failed request invalidates
  * the whole process: a caller must never keep using its last known snapshot.
  */

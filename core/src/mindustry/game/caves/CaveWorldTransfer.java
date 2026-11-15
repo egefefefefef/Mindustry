@@ -91,6 +91,9 @@ public final class CaveWorldTransfer{
         CaveArchive archive = store.archive();
         if(archive == null) throw new IllegalStateException("No inactive cave world");
         if(store.isTransferring()) throw new IllegalStateException("Already switching worlds");
+        if(!archive.inCave() && CaveTickStore.instance.snapshot().ticks() > 0){
+            throw new IllegalStateException("Wait for pending cave simulation before travelling");
+        }
         if(state == null || !state.isGame() || state.isCampaign() || state.isEditor() || net == null || net.active()){
             throw new IllegalStateException("Cave travel is only available in local custom games");
         }
@@ -107,7 +110,7 @@ public final class CaveWorldTransfer{
         byte[] targetSnapshot = archive.inactiveWorld();
         CaveBackground background = CaveBackground.instance;
         CaveBackground.Plan oldPlan = background.plan();
-        CaveBackground.Plan nextPlan = archive.inCave() ? CaveBackground.capture(team) : oldPlan;
+        CaveBackground.Plan nextPlan = archive.inCave() ? (CaveFullRuntime.configured() ? null : CaveBackground.capture(team)) : oldPlan;
         store.transferring(true);
         try{
             load(targetSnapshot);

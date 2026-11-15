@@ -103,20 +103,23 @@ multiplayer or the editor. A save containing paired cave worlds cannot be
 hosted for multiplayer, even after returning to the surface. Back up important
 saves before testing.
 
-On the surface only, a limited background model approximates production from
-warmed-up, enabled standard drills connected to the cave core directly or by a
-non-branching chain of regular/titanium conveyors. Powered drills require an
-adequate solar-only power network with no non-drill loads. Rates exclude water
-boosts, temporarily boosted buildings and transport delay; drills with shared
-conveyor routes, fuel generators, batteries as the sole supply, bridges,
-routers, processors and other unsupported layouts do not run in the background.
-Products are credited directly to the shared core as game time passes, within
-both worlds' storage limits; this model does not animate or consume fuel or
-water. Other underground buildings, units and items on conveyors remain paused.
-Drill progress, resource counts and the approximate background plan persist in
-normal saves. While paused or after either cave toggle is disabled, background
-production stops. Existing paired saves start background production after their
-next visit to and exit from the cave.
+On desktop, the experimental **Full cave simulation** setting is enabled by
+default when caves are enabled. While on the surface, an isolated Java process
+advances the actual cave logic and shares the core inventory. Each simulation
+step is committed together with a cave snapshot before the surface advances;
+the game may visibly stall, particularly with large caves. This mode supports
+unmodded local custom games only. If its worker fails, the game pauses and keeps
+the last accepted state. Save often and keep backups: this is experimental, and
+not every mechanic or platform has been verified. A transition alone is not a
+save. Existing approximate plans switch to the new mode after the next cave
+visit and exit.
+
+If full simulation is disabled or unavailable (including mobile), the earlier
+limited approximate model runs after a cave visit: only supported warmed-up
+drills with simple direct or conveyor routes produce resources, and powered
+drills require adequate solar-only power. It does not run other cave buildings,
+transport or units and does not consume fuel or water. The two modes do not run
+simultaneously. Pausing or disabling caves stops background work.
 
 Open **Settings → Experimental features** to enable the optional automatic
 weather cycle for both local custom games and campaign. The toggle affects the

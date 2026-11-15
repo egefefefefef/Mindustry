@@ -41,6 +41,7 @@ public class Logic implements ApplicationListener{
     public Logic(){
         CaveSaveStore.install();
         mindustry.game.caves.CaveBackground.install();
+        mindustry.game.caves.CaveFullRuntime.install();
         CaveEntrances.install();
 
         Events.on(BlockDestroyEvent.class, event -> {
@@ -545,7 +546,7 @@ public class Logic implements ApplicationListener{
                 state.enemies = Groups.unit.count(u -> u.team() == state.rules.waveTeam && u.isEnemy());
             }
 
-            if(!state.isPaused()){
+            if(!state.isPaused() && mindustry.game.caves.CaveFullRuntime.instance.beforeUpdate(Time.delta)){
                 Events.fire(Trigger.beforeGameUpdate);
 
                 float delta = Core.graphics.getDeltaTime();
