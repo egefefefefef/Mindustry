@@ -39,8 +39,10 @@ as a security token or be mistaken for an atomic multi-process transaction.
 surface snapshot, a cave snapshot and player world/team locations in a single
 bounded, SHA-256-checked file. A flushed temporary file is atomically renamed
 into place; unsupported atomic moves fail without falling back to an unsafe copy.
-Tests cover replacement, invalid data, corruption, and concurrent reads. The
-caller must first establish a consistent, quiescent boundary across both worlds;
+Tests cover replacement, invalid data, corruption, concurrent reads and
+serialization of real generated surface/cave saves. The latter test deliberately
+restores the saves one at a time; it does not exercise multiplayer or shared
+inventory. The caller must first establish a consistent, quiescent boundary across both worlds;
 this class does not do so, does not persist unit state or in-flight transfers,
 does not coordinate writers and does not guarantee directory-entry durability
 on power loss. It is not wired to save/reload or either server runtime.
