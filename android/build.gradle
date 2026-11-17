@@ -56,7 +56,7 @@ android{
     defaultConfig{
         Properties props = loadVersionProps()
         Integer vcode = props['androidBuildCode']?.toInteger() ?: 1
-        def versionNameResult = "$versionNumber-$versionType-${getBuildVersion().replace(" ", "-")}"
+        def versionNameResult = project.findProperty("distributionVersion")?.toString() ?: "$versionNumber-$versionType-${getBuildVersion().replace(" ", "-")}"
 
         applicationId "io.anuke.mindustry"
         minSdkVersion 21
@@ -108,6 +108,12 @@ android{
             shrinkResources = true
             proguardFiles("proguard-rules.pro")
         }
+    }
+
+    buildTypes.debug{
+        // Keep R8's code shrinking/desugaring, but do not shrink Android resources
+        // in the debug-signed distribution APK.
+        shrinkResources = false
     }
 
     if(project.hasProperty("RELEASE_STORE_FILE") || System.getenv("CI") == "true"){

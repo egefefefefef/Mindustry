@@ -16,7 +16,14 @@ public final class NativeFlowfieldJNI{
         return computeNative(costs, width, height, targets);
     }
 
+    /** Experimental batched physics. Returns false without modifying data when unsupported. */
+    public static boolean computePhysics(float[] data, int[] local, float x, float y, float width, float height){
+        if(!loaded) throw new IllegalStateException("Rust library is not available");
+        return physicsNative(data, local, x, y, width, height);
+    }
+
     private static native int[] computeNative(int[] costs, int width, int height, int[] targets);
+    private static native boolean physicsNative(float[] data, int[] local, float x, float y, float width, float height);
 
     private static boolean load(){
         String osName = System.getProperty("os.name", "").toLowerCase();

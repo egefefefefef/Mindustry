@@ -117,7 +117,7 @@ public class Control implements ApplicationListener, Loadable{
             indicators.clear();
 
             hiscore = false;
-            saves.resetSave();
+            if(!mindustry.game.caves.CaveSaveStore.instance.isTransferring()) saves.resetSave();
         });
 
         Events.on(WaveEvent.class, event -> {
@@ -147,7 +147,8 @@ public class Control implements ApplicationListener, Loadable{
 
         //autohost for pvp maps
         Events.on(WorldLoadEvent.class, event -> app.post(() -> {
-            if(state.rules.pvp && !net.active() && !state.rules.pauseDisabled && !state.isEditor() && !ui.editor.isShown()){
+            if(state.rules.pvp && !net.active() && !state.rules.pauseDisabled && !state.isEditor() && !ui.editor.isShown() &&
+                mindustry.game.caves.CaveSaveStore.instance.archive() == null){
                 try{
                     net.host(port);
                     player.admin = true;

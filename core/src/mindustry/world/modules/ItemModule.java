@@ -29,8 +29,15 @@ public class ItemModule extends BlockModule{
     protected int[] items = new int[content.items().size];
     protected int total;
     protected int takeRotation;
+    // In-memory mutation token; deliberately not serialized. It also detects an
+    // inventory being changed and then restored to its previous item counts.
+    private long revision;
 
     private @Nullable WindowedMean[] flow;
+
+    public long revision(){
+        return revision;
+    }
 
     public ItemModule copy(){
         ItemModule out = new ItemModule();
@@ -39,6 +46,7 @@ public class ItemModule extends BlockModule{
     }
 
     public void set(ItemModule other){
+        revision++;
         total = other.total;
         takeRotation = other.takeRotation;
         System.arraycopy(other.items, 0, items, 0, items.length);
@@ -48,7 +56,10 @@ public class ItemModule extends BlockModule{
         //update the flow at N fps at most
         if(flowTimer.get(1, flowPollInterval)){
             int len = content.items().size;
-            if(items.length != len) items = Arrays.copyOf(items, len);
+            if(items.length != len){
+                revision++;
+                items = Arrays.copyOf(items, len);
+            }
 
             if(flow == null || flow.length != len || cacheSums == null || cacheFlow == null){
                 if(cacheFlow == null || cacheFlow.length != items.length){
@@ -200,6 +211,7 @@ public class ItemModule extends BlockModule{
             int index = (i + takeRotation);
             if(index >= items.length) index -= items.length;
             if(items[index] > 0){
+                revision++;
                 items[index] --;
                 total --;
                 takeRotation = index + 1;
@@ -218,6 +230,7 @@ public class ItemModule extends BlockModule{
     }
 
     public void set(Item item, int amount){
+        if(items[item.id] != amount) revision++;
         total += (amount - items[item.id]);
         items[item.id] = amount;
     }
@@ -243,6 +256,7 @@ public class ItemModule extends BlockModule{
     }
 
     private void add(int item, int amount){
+        if(amount != 0) revision++;
         items[item] += amount;
         total += amount;
         if(flow != null){
@@ -265,6 +279,7 @@ public class ItemModule extends BlockModule{
     public void remove(Item item, int amount){
         amount = Math.min(amount, items[item.id]);
 
+        if(amount != 0) revision++;
         items[item.id] -= amount;
         total -= amount;
     }
@@ -286,12 +301,16 @@ public class ItemModule extends BlockModule{
     }
 
     public void clear(){
+        revision++;
         Arrays.fill(items, 0);
         total = 0;
     }
 
     public void checkArrayCapacity(int size){
-        if(items.length != size) items = Arrays.copyOf(items, size);
+        if(items.length != size){
+            revision++;
+            items = Arrays.copyOf(items, size);
+        }
         cacheFlow = null;
         cacheSums = null;
         displayFlow = null;
@@ -317,6 +336,7 @@ public class ItemModule extends BlockModule{
 
     @Override
     public void read(Reads read, boolean legacy){
+        revision++;
         //just in case, reset items
         Arrays.fill(items, 0);
         int count = legacy ? read.ub() : read.s();

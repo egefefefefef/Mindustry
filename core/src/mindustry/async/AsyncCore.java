@@ -76,6 +76,12 @@ public class AsyncCore{
         }
     }
 
+    /** Quiesce background work before a transactional world switch. */
+    public void awaitWorldTasks(){
+        complete();
+        unitPhysics.awaitPending();
+    }
+
     private void complete(){
         //wait for all threads to stop processing
         for(var future : futures){

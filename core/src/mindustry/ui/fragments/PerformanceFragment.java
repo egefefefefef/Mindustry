@@ -11,8 +11,11 @@ import arc.struct.*;
 import arc.util.*;
 import arc.util.pooling.*;
 import mindustry.core.*;
+
+import static mindustry.Vars.unitPhysics;
 import mindustry.graphics.*;
 import mindustry.ui.*;
+import mindustry.game.caves.CaveFullRuntime;
 
 import static mindustry.core.PerfCounter.*;
 
@@ -64,8 +67,16 @@ public class PerformanceFragment{
                 for(PerfCounter counter : all){
                     if(Structs.contains(displayedCounters, counter)) continue;
 
-                    i.label(() -> counter.name() + ": " + Strings.fixed(counter.valueMs(), 1)).style(Styles.outlineLabel).with(l -> l.setFontScale(fscl)).color(color(counter)).row();
+                    i.label(() -> (counter == caveSimulation ? "caveSimulation (in stateUpdate)" : counter.name()) + ": " + Strings.fixed(counter.valueMs(), 1)).style(Styles.outlineLabel).with(l -> l.setFontScale(fscl)).color(color(counter)).row();
                 }
+
+                i.label(() -> Core.bundle.format("caves.diagnostic", Core.bundle.get("caves.diagnostic." + CaveFullRuntime.instance.diagnosticStatus())))
+                    .style(Styles.outlineLabel).with(l -> l.setFontScale(fscl)).row();
+
+                // These are counts, not times: each collision layer runs independently.
+                i.add().height(10f).row();
+                i.label(() -> unitPhysics.diagnostics().lastLayers()).style(Styles.outlineLabel).with(l -> l.setFontScale(fscl)).row();
+                i.label(() -> unitPhysics.diagnostics().totals()).style(Styles.outlineLabel).with(l -> l.setFontScale(fscl)).row();
             }).left();
 
             outer.get().toFront();

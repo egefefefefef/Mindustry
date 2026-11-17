@@ -14,6 +14,7 @@ import arc.struct.*;
 import arc.util.*;
 import mindustry.*;
 import mindustry.game.EventType.*;
+import mindustry.game.WeatherCycle;
 import mindustry.gen.*;
 import mindustry.graphics.*;
 import mindustry.graphics.g3d.*;
@@ -33,6 +34,7 @@ public class Renderer implements ApplicationListener{
     public final MinimapRenderer minimap = new MinimapRenderer();
     public final OverlayRenderer overlays = new OverlayRenderer();
     public final LightRenderer lights = new LightRenderer();
+    public final WeatherGroundRenderer weatherGround = new WeatherGroundRenderer();
     public final Pixelator pixelator = new Pixelator();
     public PlanetRenderer planets;
 
@@ -334,6 +336,9 @@ public class Renderer implements ApplicationListener{
 
         Draw.draw(Layer.background, this::drawBackground);
         Draw.draw(Layer.floor, blocks.floor::drawFloor);
+        if(WeatherCycle.enabled() && drawWeather && settings.getBool("showweather", true)){
+            Draw.draw(Layer.floor + 0.1f, weatherGround::draw);
+        }
         Draw.draw(Layer.block - 1, blocks::drawShadows);
         Draw.draw(Layer.block - 0.09f, () -> {
             blocks.floor.beginDraw();
@@ -380,7 +385,7 @@ public class Renderer implements ApplicationListener{
             Draw.reset();
         });
 
-        if(state.rules.lighting && drawLight){
+        if(lights.enabled()){
             Draw.draw(Layer.light, lights::draw);
         }
 

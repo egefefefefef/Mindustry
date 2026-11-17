@@ -9,6 +9,7 @@ import arc.math.geom.*;
 import arc.struct.*;
 import arc.util.*;
 import mindustry.*;
+import mindustry.game.WeatherCycle;
 
 import static mindustry.Vars.*;
 
@@ -22,6 +23,17 @@ public class LightRenderer{
     private Seq<CircleLight> circles = new Seq<>(CircleLight.class);
     private int circleIndex = 0;
     private TextureRegion circleRegion;
+    private double cachedNightTick = Double.NaN;
+    private float cachedNight;
+
+    private float cycleNight(){
+        if(!WeatherCycle.enabled()) return 0f;
+        if(cachedNightTick != state.tick){
+            cachedNightTick = state.tick;
+            cachedNight = WeatherCycle.nightAlpha(state.tick);
+        }
+        return cachedNight;
+    }
 
     public void add(Runnable run){
         if(!enabled()) return;
@@ -184,7 +196,8 @@ public class LightRenderer{
     }
 
     public boolean enabled(){
-        return state.rules.lighting && state.rules.ambientLight.a > 0.0001f && renderer.drawLight;
+        return renderer.drawLight && ((state.rules.lighting && state.rules.ambientLight.a > 0.0001f) ||
+            cycleNight() > 0.0001f);
     }
 
     public void draw(){
@@ -220,6 +233,12 @@ public class LightRenderer{
 
         Draw.color();
         Shaders.light.ambient.set(state.rules.ambientLight);
+        if(WeatherCycle.enabled()){
+            float night = cycleNight();
+            float original = state.rules.lighting ? state.rules.ambientLight.a : 0f;
+            if(night > original) Shaders.light.ambient.set(0.04f, 0.06f, 0.12f, night);
+            else Shaders.light.ambient.a = original;
+        }
         buffer.blit(Shaders.light);
 
         lights.clear();

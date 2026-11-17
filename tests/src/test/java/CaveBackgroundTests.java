@@ -1,0 +1,203 @@
+import arc.Core;
+import mindustry.content.Blocks;
+import mindustry.content.CaveContent;
+import mindustry.content.Items;
+import mindustry.core.GameState.State;
+import mindustry.game.Team;
+import mindustry.game.caves.CaveBackground;
+import mindustry.game.caves.CaveSaveStore;
+import mindustry.game.caves.CaveWorldTransfer;
+import mindustry.io.SaveIO;
+import mindustry.world.blocks.production.Drill.DrillBuild;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static mindustry.Vars.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+class CaveBackgroundTests{
+    @BeforeAll static void init(){ ApplicationTests.launchApplication(); }
+    @BeforeEach void load(){
+        logic.reset();
+        world.loadMap(ApplicationTests.testMap);
+        state.set(State.playing);
+    }
+
+    private DrillBuild prepareDrill(boolean connected){
+        for(int x = 66; x <= 73; x++) for(int y = 63; y <= 65; y++){
+            var tile = world.tile(x, y);
+            tile.setBlock(Blocks.air);
+            tile.setFloor(Blocks.stone.asFloor());
+            tile.setOverlay(Blocks.air);
+        }
+        for(int x = 72; x <= 73; x++) for(int y = 64; y <= 65; y++) world.tile(x, y).setOverlay(Blocks.oreCoal);
+        for(int x = 66; x <= 71; x++) if(connected || x != 69) world.tile(x, 64).setBlock(Blocks.conveyor, Team.sharded, 2);
+        world.tile(72, 64).setBlock(Blocks.mechanicalDrill, Team.sharded);
+        DrillBuild drill = (DrillBuild)world.tile(72, 64).build;
+        drill.onProximityUpdate();
+        drill.warmup = 1f;
+        drill.efficiency = 1f;
+        return drill;
+    }
+
+    @Test void productionIsSavedAndRestoredWithTheCave(){
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        var file = saveDirectory.child("cave-background-test.msav");
+        try{
+            Core.settings.put("experimental-caves", true);
+            state.rules.caves = true;
+            state.rules.limitMapArea = true;
+            state.rules.limitX = 0;
+            state.rules.limitY = 0;
+            state.rules.limitWidth = 1;
+            state.rules.limitHeight = 1;
+            state.rules.env = mindustry.world.meta.Env.space;
+            CaveWorldTransfer.createCave(1234);
+            assertFalse(state.rules.limitMapArea, "Surface bounds must not disable cave buildings");
+            assertEquals(defaultEnv, state.rules.env);
+            DrillBuild drill = prepareDrill(true);
+            assertTrue(drill.enabled, "Drill must be enabled");
+            assertFalse(drill.block.hasPower, "Mechanical drill should not require power");
+            assertEquals(1f, drill.timeScale(), "Drill should have normal time scale");
+            assertTrue(mindustry.gen.Groups.build.contains(b -> b == drill), "Drill must be in the build group");
+            for(int x = 67; x <= 71; x++){
+                var belt = world.tile(x, 64).build;
+                assertSame(world.tile(x - 1, 64).build, belt.front(), "Broken belt at " + x);
+                var prev = x == 71 ? drill : world.tile(x + 1, 64).build;
+                var facing = mindustry.world.Edges.getFacingEdge(prev.tile, belt.tile);
+                assertNotNull(facing);
+                assertEquals(2, facing.relativeTo(belt.tile.x, belt.tile.y), "Belt input at " + x);
+                assertTrue(belt.enabled, "Belt enabled at " + x);
+            }
+            assertSame(Items.coal, drill.dominantItem, "The drill must be on coal");
+            assertTrue(drill.dominantItems > 0, "The drill must detect ore");
+            assertTrue(drill.proximity.contains(world.tile(71, 64).build), "The drill must touch the conveyor");
+            assertSame(Team.sharded.core(), world.tile(66, 64).build.front(), "The last belt must point at the core");
+            assertEquals(1, CaveBackground.capture(Team.sharded).size(), "Expected one supported route before exit");
+            Team.sharded.core().items.set(Items.coal, 0);
+            CaveWorldTransfer.travel();
+            var background = CaveBackground.instance;
+            assertNotNull(background.plan());
+            assertEquals(1, background.plan().size(), "Background plan immediately after exit");
+            background.advance(1000);
+            int first = Team.sharded.core().items.get(Items.coal);
+            assertTrue(first > 0);
+            state.set(State.paused);
+            background.advance(1000);
+            assertEquals(first, Team.sharded.core().items.get(Items.coal), "Paused games do not mine");
+            state.set(State.playing);
+            Core.settings.put("experimental-caves", false);
+            background.advance(1000);
+            assertEquals(first, Team.sharded.core().items.get(Items.coal), "Disabled caves do not mine");
+            Core.settings.put("experimental-caves", true);
+            SaveIO.save(file);
+            logic.reset();
+            SaveIO.load(file);
+            state.set(State.playing);
+            assertEquals(first, Team.sharded.core().items.get(Items.coal));
+            assertEquals(1, background.plan().size(), "Background plan after save and reload");
+            background.advance(1000);
+            int total = Team.sharded.core().items.get(Items.coal);
+            assertTrue(total > first);
+            CaveWorldTransfer.travel();
+            assertTrue(CaveSaveStore.instance.archive().inCave());
+            assertEquals(total, Team.sharded.core().items.get(Items.coal));
+            assertSame(Blocks.mechanicalDrill, world.tile(72, 64).block());
+            assertNull(background.plan());
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+            file.delete();
+            SaveIO.backupFileFor(file).delete();
+        }
+    }
+
+    @Test void solarPoweredLaserMinesAmethystInBackground(){
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Core.settings.put("experimental-caves", true);
+            state.rules.caves = true;
+            CaveWorldTransfer.createCave(4321);
+            for(int x = 66; x <= 76; x++) for(int y = 62; y <= 66; y++){
+                var tile = world.tile(x, y);
+                tile.setBlock(Blocks.air);
+                tile.setFloor(Blocks.stone.asFloor());
+                tile.setOverlay(Blocks.air);
+            }
+            for(int x = 71; x <= 73; x++) for(int y = 63; y <= 65; y++) world.tile(x, y).setOverlay(CaveContent.oreAmethyst);
+            for(int x = 66; x <= 70; x++) world.tile(x, 64).setBlock(Blocks.conveyor, Team.sharded, 2);
+            world.tile(72, 64).setBlock(Blocks.laserDrill, Team.sharded);
+            world.tile(75, 64).setBlock(Blocks.largeSolarPanel, Team.sharded);
+            DrillBuild drill = (DrillBuild)world.tile(72, 64).build;
+            drill.onProximityUpdate();
+            world.tile(75, 64).build.updateTile();
+            drill.warmup = 1f;
+            drill.efficiency = 1f;
+            assertSame(CaveContent.amethyst, drill.dominantItem);
+            assertEquals(1, CaveBackground.capture(Team.sharded).size(), "Solar-powered laser and belts should be supported");
+            world.tile(75, 64).build.enabled = false;
+            assertEquals(0, CaveBackground.capture(Team.sharded).size(), "Disabled power must not produce");
+            world.tile(75, 64).build.enabled = true;
+            CaveWorldTransfer.travel();
+            int before = Team.sharded.core().items.get(CaveContent.amethyst);
+            CaveBackground.instance.advance(1000);
+            assertTrue(Team.sharded.core().items.get(CaveContent.amethyst) > before);
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void storageCapacityStopsProductionWithoutBankingOverflow(){
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Core.settings.put("experimental-caves", true);
+            state.rules.caves = true;
+            CaveWorldTransfer.createCave(1234);
+            prepareDrill(true);
+            int capacity = Team.sharded.core().storageCapacity;
+            CaveWorldTransfer.travel();
+            var core = Team.sharded.core();
+            int sharedCapacity = Math.min(capacity, core.storageCapacity);
+            core.items.set(Items.coal, sharedCapacity - 1);
+            CaveBackground.instance.advance(10000);
+            assertEquals(sharedCapacity, core.items.get(Items.coal));
+            CaveBackground.instance.advance(10000);
+            core.items.remove(Items.coal, 1);
+            CaveBackground.instance.advance(0.01f);
+            assertEquals(sharedCapacity - 1, core.items.get(Items.coal));
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void sharedConveyorInputsAreNotApproximated(){
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Core.settings.put("experimental-caves", true);
+            state.rules.caves = true;
+            CaveWorldTransfer.createCave(1234);
+            prepareDrill(true);
+            world.tile(68, 65).setBlock(Blocks.conveyor, Team.sharded, 3);
+            assertEquals(0, CaveBackground.capture(Team.sharded).size());
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+
+    @Test void disconnectedDrillsAreNotCredited(){
+        boolean previous = Core.settings.getBool("experimental-caves", false);
+        try{
+            Core.settings.put("experimental-caves", true);
+            state.rules.caves = true;
+            CaveWorldTransfer.createCave(1234);
+            prepareDrill(false);
+            CaveWorldTransfer.travel();
+            assertEquals(0, CaveBackground.instance.plan().size());
+            int coal = Team.sharded.core().items.get(Items.coal);
+            CaveBackground.instance.advance(10000);
+            assertEquals(coal, Team.sharded.core().items.get(Items.coal));
+        }finally{
+            Core.settings.put("experimental-caves", previous);
+        }
+    }
+}

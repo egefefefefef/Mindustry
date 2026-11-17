@@ -1,5 +1,6 @@
 package mindustry.async;
 
+import arc.Core;
 import arc.math.*;
 import arc.math.geom.*;
 import arc.math.geom.QuadTree.*;
@@ -29,6 +30,45 @@ public class PhysicsProcess implements AsyncProcess{
     private Seq<PhysicRef> pendingAdds = new Seq<>(false, 20, PhysicRef.class);
 
     private static volatile long maxPhysicsTime = 0;
+    // Written and read on the main thread after joining all physics futures.
+    private final PhysicsDiagnostics diagnostics = new PhysicsDiagnostics();
+
+    public PhysicsDiagnostics diagnostics(){
+        return diagnostics;
+    }
+
+    /** Backend used by one non-empty layer in its last completed step. */
+    public enum PhysicsBackend { none, rust, javaDisabled, javaFallback }
+
+    /** Counts layer steps, not units or milliseconds. Reset on world reset/load. */
+    public static class PhysicsDiagnostics{
+        private int rust, javaDisabled, javaFallback;
+        private long totalRust, totalJavaDisabled, totalJavaFallback;
+
+        void beginStep(){ rust = javaDisabled = javaFallback = 0; }
+
+        void record(PhysicsBackend backend){
+            switch(backend){
+                case rust -> { rust++; totalRust++; }
+                case javaDisabled -> { javaDisabled++; totalJavaDisabled++; }
+                case javaFallback -> { javaFallback++; totalJavaFallback++; }
+                case none -> { }
+            }
+        }
+
+        void reset(){
+            beginStep();
+            totalRust = totalJavaDisabled = totalJavaFallback = 0;
+        }
+
+        public String lastLayers(){
+            return "Physics layers: Rust " + rust + " | Java " + javaDisabled + " | fallback " + javaFallback;
+        }
+
+        public String totals(){
+            return "Layer steps: Rust " + totalRust + " | Java " + totalJavaDisabled + " | fallback " + totalJavaFallback;
+        }
+    }
 
     public void add(Unit unit){
         if(unit == null || unit.type == null || !unit.type.physics || unit.hasPhysicsRef) return;
@@ -63,6 +103,11 @@ public class PhysicsProcess implements AsyncProcess{
             }catch(InterruptedException | ExecutionException e){
                 throw new RuntimeException(e);
             }
+        }
+        // A completed future establishes visibility of that layer's backend.
+        if(futures.size > 0){
+            diagnostics.beginStep();
+            for(PhysicsWorld world : physics) diagnostics.record(world.lastBackend());
         }
         futures.clear();
 
@@ -111,11 +156,13 @@ public class PhysicsProcess implements AsyncProcess{
             }
         }
 
+        // Read settings on the main thread before dispatching physics workers.
+        boolean preferNative = nativePhysicsEnabled();
         //one task per world
         futures.clear();
         for(int i = 0; i < layers; i++){
             PhysicsWorld world = physics[i];
-            futures.add(Vars.mainExecutor.submit(world::update));
+            futures.add(Vars.mainExecutor.submit(() -> { world.update(preferNative); }));
         }
     }
 
@@ -124,8 +171,24 @@ public class PhysicsProcess implements AsyncProcess{
         return false;
     }
 
+    /** Wait for outstanding layer tasks before replacing the world. */
+    public void awaitPending(){
+        for(int i = 0; i < futures.size; i++){
+            try{
+                futures.items[i].get();
+            }catch(InterruptedException e){
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }catch(ExecutionException e){
+                throw new RuntimeException(e);
+            }
+        }
+        futures.clear();
+    }
+
     @Override
     public void reset(){
+        diagnostics.reset();
         if(physics != null){
             refs.clear();
             futures.clear();
@@ -160,6 +223,13 @@ public class PhysicsProcess implements AsyncProcess{
         }
     }
 
+    /** Command-line override wins; otherwise use the local preference and build default. */
+    public static boolean nativePhysicsEnabled(){
+        String override = System.getProperty("mindustry.experimentalNativePhysics");
+        if(override != null) return Boolean.parseBoolean(override);
+        return Core.settings == null ? Version.nativePhysicsDefault : Core.settings.getBool("experimental-native-physics", Version.nativePhysicsDefault);
+    }
+
     //world for simulating a single collision layer's physics, meant to run on its own thread
     public static class PhysicsWorld{
         //how much to soften movement by
@@ -170,6 +240,13 @@ public class PhysicsProcess implements AsyncProcess{
         private final Seq<PhysicsBody> seq = new Seq<>(PhysicsBody.class);
         private final Vec2 vec = new Vec2();
         private final Rand rand = new Rand();
+        private final NativePhysics nativePhysics = new NativePhysics();
+        private PhysicsBackend lastBackend = PhysicsBackend.none;
+
+        /** Read only after the layer's task has completed. */
+        public PhysicsBackend lastBackend(){
+            return lastBackend;
+        }
 
         public PhysicsWorld(Rect bounds){
             tree = new QuadTree<>(new Rect(bounds));
@@ -184,12 +261,27 @@ public class PhysicsProcess implements AsyncProcess{
         }
 
         public void update(){
+            update(nativePhysicsEnabled());
+        }
+
+        /** Runs one step and reports whether the experimental native kernel was used. */
+        public boolean update(boolean preferNative){
             long begin = Time.nanos();
 
             var bodyItems = bodies.items;
             int bodySize = bodies.size;
 
             int iterations = Vars.net.client() || OS.isMobile ? mobileIterations : desktopIterations;
+            lastBackend = bodySize == 0 ? PhysicsBackend.none :
+                preferNative ? PhysicsBackend.javaFallback : PhysicsBackend.javaDisabled;
+
+            // Each PhysicsWorld has independent buffers; a failed native call leaves
+            // Java bodies untouched and falls back to the original implementation.
+            if(preferNative && iterations == 1 && bodySize > 0 && nativePhysics.update(bodyItems, bodySize, tree.bounds)){
+                lastBackend = PhysicsBackend.rust;
+                maxPhysicsTime = Math.max(maxPhysicsTime, Time.timeSinceNanos(begin));
+                return true;
+            }
 
             for(int iter = 0; iter < iterations; iter++){
                 tree.fill(bodies);
@@ -248,6 +340,7 @@ public class PhysicsProcess implements AsyncProcess{
             }
 
             maxPhysicsTime = Math.max(maxPhysicsTime, Time.timeSinceNanos(begin));
+            return false;
         }
 
         public static class PhysicsBody implements QuadTreeObject{

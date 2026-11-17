@@ -12,6 +12,8 @@ import mindustry.ctype.*;
 import mindustry.entities.*;
 import mindustry.game.EventType.*;
 import mindustry.game.*;
+import mindustry.game.caves.CaveSaveStore;
+import mindustry.game.caves.CaveEntrances;
 import mindustry.game.Teams.*;
 import mindustry.gen.*;
 import mindustry.maps.*;
@@ -37,6 +39,10 @@ import static mindustry.Vars.*;
 public class Logic implements ApplicationListener{
 
     public Logic(){
+        CaveSaveStore.install();
+        mindustry.game.caves.CaveBackground.install();
+        mindustry.game.caves.CaveFullRuntime.install();
+        CaveEntrances.install();
 
         Events.on(BlockDestroyEvent.class, event -> {
             //skip if rule is off
@@ -84,6 +90,15 @@ public class Logic implements ApplicationListener{
 
                     state.rules.sector.saveInfo();
                 }
+            }
+        });
+
+        // One local preference enables the cycle in campaign and custom games.
+        // Preserve older per-world custom rules when the preference is off.
+        Events.on(RulesLoadEvent.class, e -> {
+            if(!headless && net != null && !net.active() && !e.rules.editor && !e.rules.caveInterior && Core.settings != null){
+                boolean enabled = Core.settings.getBool("campaignweathercycle", false);
+                if(e.rules.sector != null || enabled) e.rules.weatherCycle = enabled;
             }
         });
 
@@ -374,18 +389,28 @@ public class Logic implements ApplicationListener{
     }
 
     protected void updateWeather(){
+        if(WeatherCycle.enabled()){
+            WeatherCycle.update();
+            return;
+        }
         state.rules.weather.removeAll(w -> w.weather == null);
 
         for(WeatherEntry entry : state.rules.weather){
             //update cooldown
             entry.cooldown -= Time.delta;
 
+            // A local always-on rain entry also respects the experimental rain
+            // intensity selector even when the automatic cycle is switched off.
+            boolean localAlwaysRain = WeatherCycle.localGame() && entry.always && entry.weather == Weathers.rain;
+            if(localAlwaysRain && entry.weather.isActive()){
+                entry.weather.instance().intensity(WeatherCycle.alwaysRainIntensity(entry));
+            }
             //create new event when not active
             if((entry.cooldown < 0 || entry.always) && !entry.weather.isActive()){
                 float duration = entry.always ? Float.POSITIVE_INFINITY : Mathf.random(entry.minDuration, entry.maxDuration);
                 entry.cooldown = duration + Mathf.random(entry.minFrequency, entry.maxFrequency);
                 Tmp.v1.setToRandomDirection();
-                Call.createWeather(entry.weather, entry.intensity, duration, Tmp.v1.x, Tmp.v1.y);
+                Call.createWeather(entry.weather, localAlwaysRain ? WeatherCycle.alwaysRainIntensity(entry) : entry.intensity, duration, Tmp.v1.x, Tmp.v1.y);
             }
         }
     }
@@ -521,7 +546,7 @@ public class Logic implements ApplicationListener{
                 state.enemies = Groups.unit.count(u -> u.team() == state.rules.waveTeam && u.isEnemy());
             }
 
-            if(!state.isPaused()){
+            if(!state.isPaused() && mindustry.game.caves.CaveFullRuntime.instance.beforeUpdate(Time.delta)){
                 Events.fire(Trigger.beforeGameUpdate);
 
                 float delta = Core.graphics.getDeltaTime();

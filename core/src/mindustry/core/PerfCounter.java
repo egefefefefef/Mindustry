@@ -10,6 +10,7 @@ public enum PerfCounter{
     update,
     other,
     stateUpdate,
+    caveSimulation,
     entityMisc,
     entityUpdate,
     buildingUpdate,
