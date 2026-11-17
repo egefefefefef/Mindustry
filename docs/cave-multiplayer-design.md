@@ -35,6 +35,16 @@ This registry does not authenticate identities, move or freeze entities, persist
 state, communicate with clients or guarantee crash recovery. It must not be used
 as a security token or be mistaken for an atomic multi-process transaction.
 
+`CaveNetworkCheckpoint` is a separate, disconnected prototype for storing a
+surface snapshot, a cave snapshot and player world/team locations in a single
+bounded, SHA-256-checked file. A flushed temporary file is atomically renamed
+into place; unsupported atomic moves fail without falling back to an unsafe copy.
+Tests cover replacement, invalid data, corruption, and concurrent reads. The
+caller must first establish a consistent, quiescent boundary across both worlds;
+this class does not do so, does not persist unit state or in-flight transfers,
+does not coordinate writers and does not guarantee directory-entry durability
+on power loss. It is not wired to save/reload or either server runtime.
+
 ## Work required before enabling
 
 1. Define a server-authoritative, isolated second world for both host types,
