@@ -87,8 +87,7 @@ Post feature requests and feedback [here](https://github.com/Anuken/Mindustry-Su
 
 ### Experimental features
 
-**Caves** are an experimental feature in the current branch, not in the
-published v1.3 release. For a local single-player custom game, turn on
+**Caves** are an experimental feature. For a local single-player custom game, turn on
 **Settings → Experimental features → Caves** and enable **Generate a cave
 entrance** in the custom-game rules. The entrance appears on unoccupied dry
 ground near the player's core; click it to enter and click the cave exit to
