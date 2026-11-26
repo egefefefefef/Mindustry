@@ -348,6 +348,10 @@ class WeatherCycleTests{
 
     @Test
     void multiplayerClockCorrectsClientsAndRejectsInvalidOrOldPackets() throws Exception{
+        var previousNet = net;
+        var previousClient = netClient;
+        net = new mindustry.net.Net(null);
+        netClient = new mindustry.core.NetClient();
         var active = net.getClass().getDeclaredField("active");
         active.setAccessible(true);
         active.setBoolean(net, true); // client
@@ -355,7 +359,7 @@ class WeatherCycleTests{
             state.rules.weatherCycle = true;
             state.tick = 50;
             WeatherCycle.resetClock();
-            WeatherCycle.receiveClock("1000");
+            mindustry.core.NetClient.clientPacketReliable(WeatherCycle.clockPacket, "1000");
             assertEquals(1000, WeatherCycle.clock(), 0.001);
             state.tick = 55;
             assertEquals(1005, WeatherCycle.clock(), 0.001);
@@ -369,6 +373,8 @@ class WeatherCycleTests{
             assertEquals(55, WeatherCycle.clock(), 0.001);
         }finally{
             active.setBoolean(net, false);
+            net = previousNet;
+            netClient = previousClient;
             WeatherCycle.resetClock();
         }
     }
