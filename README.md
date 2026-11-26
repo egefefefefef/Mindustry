@@ -1,161 +1,89 @@
-![Logo](core/assets-raw/sprites/ui/logo.png)
+![Mindustry](core/assets-raw/sprites/ui/logo.png)
 
-[![Build Status](https://github.com/Anuken/Mindustry/workflows/Tests/badge.svg?event=push)](https://github.com/Anuken/Mindustry/actions)
-[![Discord](https://img.shields.io/discord/391020510269669376.svg?logo=discord&logoColor=white&logoWidth=20&labelColor=7289DA&label=Discord&color=17cf48)](https://discord.gg/mindustry)  
+# Mindustry — форк egefefefefef
 
-The automation tower defense RTS, written in Java.
+Неофициальный форк [Mindustry](https://github.com/Anuken/Mindustry): игры о строительстве автоматизированных заводов, защите базы и сражениях. В этой версии есть экспериментальные пещеры с новыми ресурсами, смена погоды и дня и ночи, а также инструменты для диагностики производительности.
 
-_[Trello Board](https://trello.com/b/aE2tcUwF/mindustry-40-plans)_  
-_[Wiki](https://mindustrygame.github.io/wiki)_  
-_[Javadoc](https://mindustrygame.github.io/docs/)_ 
+[Скачать последний релиз](https://github.com/egefefefefef/Mindustry/releases/latest) · [Все релизы](https://github.com/egefefefefef/Mindustry/releases) · [Сообщить об ошибке](https://github.com/egefefefefef/Mindustry/issues)
 
-## Contributing
+> **Экспериментальная версия.** Перед использованием новых возможностей сделайте резервную копию важных сохранений. Пещеры пока доступны только в одиночной пользовательской игре; в сетевой игре они не работают.
 
-See [CONTRIBUTING](CONTRIBUTING.md) for general code style and PR guidelines.
+## Скачать и запустить
 
-If you are a first-time contributor looking for features to implement or bugs to fix, see the issues tagged with 'candidate' [in the Mindustry-Suggestions repostiory](https://github.com/Anuken/Mindustry-Suggestions/issues?q=is%3Aissue%20state%3Aopen%20label%3Acandidate).
+Готовые архивы находятся в [Releases](https://github.com/egefefefefef/Mindustry/releases). В релизе v1.4 доступны:
 
-## Building
+| Система | Архив | Запуск |
+| --- | --- | --- |
+| Windows x64 | `Mindustry-v1.4-Windows-x64.zip` | Распакуйте архив и запустите `Start-Mindustry.bat`. |
+| Linux x64 | `Mindustry-v1.4-Linux-x64.zip` | Распакуйте архив и запустите `Start-Mindustry.sh`. |
+| macOS | `Mindustry-v1.4-macOS.zip` | В архиве отдельно лежат приложения для Intel и Apple Silicon. Выберите подходящее. |
 
-Bleeding-edge upstream builds are available [here](https://github.com/Anuken/MindustryBuilds/releases).
+Java уже включена в эти архивы — устанавливать её отдельно не нужно. Приложения для macOS не нотарифицированы, поэтому системе может потребоваться разрешение на запуск в настройках безопасности. Если скрипт Linux не запускается из-за прав, выполните `chmod +x Start-Mindustry.sh` и повторите запуск.
 
-### GitHub Actions CI
+Релиз v1.4 содержит только версии для ПК. Графический запуск и сетевая игра с несколькими реальными клиентами в автоматической проверке релиза не тестировались.
 
-The `Tests` and `Pull Request Tests` workflows run on pushes and pull requests, respectively; either can also be started manually from the Actions tab. They run the Java and Rust tests, build the desktop and server JARs, and check that the desktop JAR can load its bundled Linux x86-64 Rust library. Download both JARs from the `mindustry-linux-jars` artifact. Java test reports are uploaded when available, including on failure. The `Mindustry v1.2 platform builds` workflow builds and verifies platform packages when run manually. Its `publish` option publishes the verified packages together under the v1.2 tag; it refuses to move an existing tag. A signed iOS build requires `IOS_SIGNING_CERTIFICATE_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, and `IOS_SIGN_IDENTITY` Actions secrets.
+## Возможности форка
 
-If you'd rather compile on your own, follow these instructions.
-First, make sure you have [JDK 17](https://adoptium.net/temurin/releases/?os=any&arch=any&version=17) installed. **Other JDK versions will not work.** Open a terminal in the Mindustry directory and run the following commands:
+### Пещеры и новые ресурсы
 
-### Windows
+Пещера — отдельная карта с рудой, постройками и общим с поверхностью хранилищем ядра. В ней можно найти **аметист**, **адамантит** и **рубин**. Из новых ресурсов доступны улучшенные буры и рубиновый конвейер, который быстрее титанового. Руды добываются лазерным буром или лучше.
 
-For a ready-to-run Windows x64 package, download `Mindustry-v1.2-Windows-x64.zip` from the fork's Releases, extract it, and run `Start-Mindustry.bat`. It uses the Java runtime in the included `jre` folder; Java does not need to be installed separately.
+Как включить пещеру:
 
-_Running:_ `gradlew desktop:run`  
-_Building:_ `gradlew desktop:dist`  
-_Sprite Packing:_ `gradlew tools:pack`
+1. Откройте **Настройки → Экспериментальные функции** и включите **Экспериментальные пещеры**.
+2. В правилах одиночной пользовательской игры включите создание входа в пещеру.
+3. Найдите вход рядом с ядром и нажмите на него. Для возвращения используйте выход внутри пещеры. Если подходящей свободной сухой земли рядом с ядром нет, вход не появится.
 
-### Linux/Mac OS
+Пока игрок находится под землёй, поверхность приостановлена. При возвращении на поверхность пещера может продолжать работу в фоне:
 
-_Running:_ `./gradlew desktop:run`  
-_Building:_ `./gradlew desktop:dist`  
-_Sprite Packing:_ `./gradlew tools:pack`
+- На ПК экспериментальная **полная симуляция пещеры** запускает игровую логику в отдельном процессе Java. Она включена по умолчанию при включённых пещерах, рассчитана на локальную игру без модов и может заметно задерживать кадры. При сбое игра ставится на паузу, сохраняя последнее принятое состояние.
+- Если полная симуляция выключена или недоступна, используется ограниченная приблизительная модель: работают только подходящие разогретые буры с простым маршрутом к ядру. Остальные механизмы, юниты и расход топлива или воды она не моделирует. Подробнее — в [заметках о симуляции](docs/cave-background-simulation.md).
 
-### Server
+Переход между мирами сам по себе **не записывает сохранение на диск**: сохраняйте игру вручную или используйте автосохранение. Выключение пещер не мешает выйти из уже открытой пещеры, но закрывает повторный вход. Старые сгенерированные пещеры не получают рубин автоматически.
 
-The v1.2 fork release contains desktop packages only. To build the server yourself, replace 'desktop' with 'server', e.g. `gradlew server:dist`.
+Пещеры недоступны в кампании, редакторе и сетевой игре. Сохранение с парой миров нельзя открыть как сетевой сервер, даже находясь на поверхности. Подготовительные прототипы сетевых пещер ещё не подключены к игре; их текущее состояние описано в [документации](docs/cave-multiplayer-design.md).
 
-### Android
+### Погода и время суток
 
-1. Install the Android SDK [here.](https://developer.android.com/studio#command-tools) Make sure you're downloading the "Command line tools only", as Android Studio is not required.
-2. In the unzipped Android SDK folder, find the cmdline-tools directory. Then create a folder inside of it called `latest` and put all of its contents into the newly created folder.
-3. In the same directory run the command `sdkmanager --licenses` (or `./sdkmanager --licenses` if on linux/mac)
-4. Set the `ANDROID_HOME` environment variable to point to your unzipped Android SDK directory.
-5. Enable developer mode on your device/emulator. If you are on testing on a phone you can follow [these instructions](https://developer.android.com/studio/command-line/adb#Enabling), otherwise you need to google how to enable your emulator's developer mode specifically.
-6. Run `gradlew android:assembleDebug` (or `./gradlew` if on linux/mac). This will create an unsigned APK in `android/build/outputs/apk`.
+В **Настройки → Экспериментальные функции** можно включить смену погоды и дня и ночи в одиночной игре и кампании. Для пользовательской карты её также можно включить в правилах мира.
 
-To debug the application on a connected device/emulator, run `gradlew android:installDebug android:run`.
+Ясная погода, дождь, туман, снег и дождь с туманом меняются каждые три минуты игрового времени. Визуальный цикл дня и ночи длится 12 минут. Снег постепенно накапливается и тает, замедляя наземные юниты; лужи и следы на снегу — визуальные эффекты. Расписание погоды карты при включённом цикле приостанавливается, но погода с отметкой **«Всегда»** остаётся активной.
 
-### Troubleshooting
+В сетевой игре цикл можно включить в правилах мира перед запуском сервера. Погодой управляет сервер, клиенты получают корректировки времени. Используйте одинаковую версию этого форка на сервере и у всех игроков; режим экспериментальный и ещё не был проверен вручную с несколькими клиентами. Локальная настройка силы дождя действует в одиночной игре; в сетевой игре сила выбирается автоматически.
 
-#### Permission Denied
+### Производительность и инструменты
 
-If the terminal returns `Permission denied` or `Command not found` on Mac/Linux, run `chmod +x ./gradlew` before running `./gradlew`. *This is a one-time procedure.*
+- **Физика юнитов на Rust** — экспериментальный вариант обработки столкновений. При недоступности или неподходящих условиях используется Java. Переключатель находится в экспериментальных настройках; параметр `-Dmindustry.experimentalNativePhysics=false` позволяет выключить её при запуске.
+- **Панель разработчика** и метрики производительности находятся в настройках разработчика. Панель предназначена для одиночной игры и может изменять текущий мир.
+- Метрика `caveSimulation (in stateUpdate)` показывает часть `stateUpdate`, включая ожидание фонового процесса пещеры; её не нужно прибавлять к `stateUpdate` второй раз.
 
-#### Where is the `mindustry.gen` package?
+## Сборка из исходников
 
-As the name implies, `mindustry.gen` is generated *at build time* based on other code. You will not find source code for this package in the repository, and it should not be edited by hand.
+Для сборки используется **JDK 17**. Для Rust-тестов и сборки нативной библиотеки также нужен [Rust и Cargo](https://www.rust-lang.org/tools/install). CI использует соседний каталог [Arc](https://github.com/Anuken/Arc) с закреплённым коммитом; это помогает избежать зависимости от доступности JitPack. Например, если каталога `../Arc` ещё нет:
 
-The following is a non-exhaustive list of the "source" of generated code in `mindustry.gen`:
+```sh
+git init ../Arc
+git -C ../Arc fetch --depth=1 https://github.com/Anuken/Arc 7445105cd2683daf5b9ac7033ebb07265d3e814d
+git -C ../Arc checkout --detach FETCH_HEAD
+```
 
-- `Call`, `*Packet` classes: Generated from methods marked with `@Remote`.
-- All entity classes (`Unit`, `EffectState`, `Posc`, etc): Generated from component classes in the `mindustry.entities.comp` package, and combined using definitions in `mindustry.content.UnitTypes`.
-- `Sounds`, `Musics`, `Tex`, `Icon`, etc: Generated based on files in the respective asset folders.
+Из корня репозитория на Linux или macOS:
 
----
+```sh
+./gradlew desktop:run       # запустить игру
+./gradlew desktop:dist      # собрать desktop/build/libs/Mindustry.jar
+./gradlew server:dist       # собрать server/build/libs/server-release.jar
+./gradlew tests:test        # запустить Java-тесты
+./gradlew tools:pack        # упаковать спрайты
+cargo test --manifest-path native/pathfinding/Cargo.toml
+```
 
-Gradle may take up to several minutes to download files. Be patient. <br>
-After building, the output .JAR file should be in `/desktop/build/libs/Mindustry.jar` for desktop builds, and in `/server/build/libs/server-release.jar` for server builds.
+В Windows используйте `gradlew.bat` вместо `./gradlew`, например `gradlew.bat desktop:dist`. Gradle при первом запуске загрузит зависимости. Модуль `mindustry.gen` создаётся автоматически во время сборки — редактировать его вручную не нужно.
 
-## Feature Requests
+Готовые релизные архивы дополнительно упаковывают среду Java и нативную библиотеку для своей платформы. Обычный локальный `desktop:dist` сам по себе не является таким архивом. Сборки и тесты форка можно посмотреть во вкладке [Actions](https://github.com/egefefefefef/Mindustry/actions).
 
-Post feature requests and feedback [here](https://github.com/Anuken/Mindustry-Suggestions/issues/new/choose).
+## Обратная связь и лицензия
 
-## Downloads
+Ошибки и предложения по этому форку можно оставлять в [Issues этого репозитория](https://github.com/egefefefefef/Mindustry/issues). Общие правила работы с кодом — в [CONTRIBUTING.md](CONTRIBUTING.md).
 
-| [![](https://static.itch.io/images/badge.svg)](https://anuke.itch.io/mindustry)    |    [![](https://play.google.com/intl/en_us/badges/images/generic/en-play-badge.png)](https://play.google.com/store/apps/details?id=io.anuke.mindustry)   |    [![](https://fdroid.gitlab.io/artwork/badge/get-it-on.png)](https://f-droid.org/packages/io.anuke.mindustry)	| [![](https://flathub.org/assets/badges/flathub-badge-en.svg)](https://flathub.org/apps/details/com.github.Anuken.Mindustry)  
-|---	|---	|---	|---	|
-
-### Experimental features
-
-**Caves** are an experimental feature. For a local single-player custom game, turn on
-**Settings → Experimental features → Caves** and enable **Generate a cave
-entrance** in the custom-game rules. The entrance appears on unoccupied dry
-ground near the player's core; click it to enter and click the cave exit to
-return. If no suitable ground is found nearby, no entrance is placed. The
-surface is paused while you are underground. The two worlds share the core inventory; the cave's
-storage limit is fixed to the surface core's capacity when the cave is created.
-Resources and structures are saved with the game when it is saved or autosaved;
-a transition alone is not a disk save. The new ores can be mined with a laser
-drill or better. Newly generated caves also contain ruby, used for the ruby
-drill and conveyor; existing generated caves are not regenerated and will not
-automatically gain ruby. Disabling either switch prevents entering again, but still
-allows an existing cave to be exited. Caves are not available in campaign,
-multiplayer or the editor. A save containing paired cave worlds cannot be
-hosted for multiplayer, even after returning to the surface. Back up important
-saves before testing.
-
-On desktop, the experimental **Full cave simulation** setting is enabled by
-default when caves are enabled. While on the surface, an isolated Java process
-advances the actual cave logic and shares the core inventory. Each simulation
-step is committed together with a cave snapshot before the surface advances;
-the game may visibly stall, particularly with large caves. This mode supports
-unmodded local custom games only. If its worker fails, the game pauses and keeps
-the last accepted state. Save often and keep backups: this is experimental, and
-not every mechanic or platform has been verified. A transition alone is not a
-save. Existing approximate plans switch to the new mode after the next cave
-visit and exit.
-
-If full simulation is disabled or unavailable (including mobile), the earlier
-limited approximate model runs after a cave visit: only supported warmed-up
-drills with simple direct or standard, titanium, or ruby conveyor routes produce resources, and powered
-drills require adequate solar-only power. It does not run other cave buildings,
-transport or units and does not consume fuel or water. The two modes do not run
-simultaneously. Pausing or disabling caves stops background work. By default,
-the game also pauses when the window loses focus; in that case the cave stops
-until play resumes. The performance overlay reports `caveSimulation (in
-stateUpdate)` as a subset of `stateUpdate`, including time waiting for the worker,
-not as a second cost to add. Its cave status distinguishes the full simulation,
-the legacy approximation and pause.
-
-Open **Settings → Experimental features** to enable the optional automatic
-weather cycle for both local custom games and campaign. The toggle affects the
-current local game as well as subsequently loaded worlds. Old custom saves may
-also enable it via **Customize → Environment**; this per-world rule remains
-supported when the global preference is off. For multiplayer, enable **Automatic
-weather and day/night** in the world rules before hosting (or in server rules).
-The server controls the cycle and sends clock corrections to clients; all players
-need this fork version. The cycle is not applied in the editor.
-
-In the same section, **Rain intensity** selects automatic, normal rain or
-downpour. This is a local preference, not a saved world rule: it changes the
-strength of cycle rain and local map rain marked **Always**, including current
-rain, but does not force rain or alter the phase schedule. Multiplayer always
-uses automatic shared intensity instead of each player’s local preference. **Rust unit physics** enables the experimental native unit
-collision backend; when unavailable or unsuitable, Java is used instead. Its
-default depends on the build, and `-Dmindustry.experimentalNativePhysics` takes
-priority over the menu. Changing it applies to subsequent simulation steps.
-
-Clear weather, rain, fog, snow and rain with fog each last three minutes of
-active game time. Their order and intensity vary. Visual daylight and darkness
-follow a twelve-minute cycle. Rain and snow use existing weather effects and
-can affect units and environmental attributes. Snow cover builds and melts
-and slows grounded units, including walkers, by up to 25%; flying units and
-non-walking hovercraft are unaffected.
-Temporary footprints are bounded, visual only, and not saved. Puddles appear on exposed dry ground during the cycle, grow and
-dry visually but are not physical liquid. Weather graphics must be enabled to see them. Neither effect replaces terrain.
-Normal map weather scheduling is paused while the cycle is active, but map
-weather entries marked **Always** continue alongside the cycle. They start
-immediately, including rain during the initial clear phase. Other weather
-already present can continue until it expires. Turning off weather graphics hides these overlays,
-and disabling lighting hides the visual night. Back up important saves before
-using experimental features.
+Форк основан на [Mindustry](https://github.com/Anuken/Mindustry) от Anuken и распространяется на условиях [GNU GPL v3](LICENSE). Это не официальный релиз исходного проекта.
