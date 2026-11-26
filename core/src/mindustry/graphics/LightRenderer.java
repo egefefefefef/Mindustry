@@ -28,9 +28,10 @@ public class LightRenderer{
 
     private float cycleNight(){
         if(!WeatherCycle.enabled()) return 0f;
-        if(cachedNightTick != state.tick){
-            cachedNightTick = state.tick;
-            cachedNight = WeatherCycle.nightAlpha(state.tick);
+        double tick = WeatherCycle.clock();
+        if(cachedNightTick != tick){
+            cachedNightTick = tick;
+            cachedNight = WeatherCycle.nightAlpha(tick);
         }
         return cachedNight;
     }

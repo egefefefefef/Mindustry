@@ -9,7 +9,7 @@ import mindustry.type.Weather.WeatherEntry;
 
 import static mindustry.Vars.*;
 
-/** Opt-in local single-player weather. Conditions derive from the saved game tick. */
+/** Opt-in weather driven by the authoritative world's saved game tick. */
 public class WeatherCycle{
     public static final double phaseTicks = 3d * Time.toMinutes;
     public static final double dayTicks = 12d * Time.toMinutes;
@@ -21,13 +21,43 @@ public class WeatherCycle{
     private static double cachedTick = Double.NaN;
     private static float cachedSnow, cachedPuddle;
     private static int cachedRainMode = -1;
+    public static final String clockPacket = "arena-weather-clock-v1";
+    private static double serverClock = Double.NaN, localClockAtSync;
 
     public static boolean localGame(){
         return state != null && state.isGame() && !state.isEditor() && net != null && !net.active();
     }
 
     public static boolean enabled(){
-        return localGame() && state.rules.weatherCycle && !state.rules.caveInterior;
+        return state != null && state.isGame() && !state.isEditor() && net != null &&
+            state.rules.weatherCycle && !state.rules.caveInterior;
+    }
+
+    /** Client rendering and movement prediction follow the most recent server clock. */
+    public static double clock(){
+        if(state == null) return 0;
+        double tick = validTick(state.tick);
+        if(net != null && net.client() && Double.isFinite(serverClock)){
+            return serverClock + Math.max(0, tick - localClockAtSync);
+        }
+        return tick;
+    }
+
+    /** Called for a server-to-client packet, never for a client request. */
+    public static void receiveClock(String value){
+        if(net == null || !net.client() || state == null || !state.isGame() || value == null || value.length() > 32) return;
+        try{
+            double tick = Double.parseDouble(value);
+            if(!Double.isFinite(tick) || tick < 0 || (Double.isFinite(serverClock) && tick < serverClock)) return;
+            serverClock = tick;
+            localClockAtSync = validTick(state.tick);
+        }catch(NumberFormatException ignored){}
+    }
+
+    /** Prevent a clock from a previous world or connection being reused. */
+    public static void resetClock(){
+        serverClock = Double.NaN;
+        cachedTick = Double.NaN;
     }
 
     private static double validTick(double tick){
@@ -68,8 +98,9 @@ public class WeatherCycle{
         return intensityForSlot(slotAt(tick), kind);
     }
 
-    /** Local preference: 0 = automatic, 1 = normal rain, 2 = downpour. */
+    /** Local preference; multiplayer always uses the shared automatic intensity. */
     public static int rainMode(){
+        if(net != null && net.active()) return 0;
         int mode = Core.settings == null ? 0 : Core.settings.getInt("weathercycle-rainmode", 0);
         return mode < 0 || mode > 2 ? 0 : mode;
     }
@@ -130,7 +161,7 @@ public class WeatherCycle{
     public static float puddlesAt(double tick, int rainMode){ return coverAt(tick, false, rainMode); }
 
     private static void refreshCover(){
-        double tick = validTick(state.tick);
+        double tick = clock();
         int mode = rainMode();
         if(cachedTick != tick || cachedRainMode != mode){
             cachedTick = tick;
@@ -176,7 +207,7 @@ public class WeatherCycle{
     /** Called on the game thread only. Scheduled entries pause, but explicit
      * always-on entries remain active even during a clear cycle phase. */
     public static void update(){
-        if(!enabled()) return;
+        if(!enabled() || net.client()) return;
         double tick = validTick(state.tick);
         Phase phase = phaseAt(tick);
         float remaining = (float)(phaseTicks - tick % phaseTicks);

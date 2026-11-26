@@ -1147,6 +1147,12 @@ public class NetServer implements ApplicationListener{
 
         Call.stateSnapshot(state.wavetime, state.wave, state.enemies, state.isPaused(), state.gameOver,
         universe.seconds(), tps, GlobalVars.rand.seed0, GlobalVars.rand.seed1, syncStream.toByteArray());
+        if(WeatherCycle.enabled()){
+            // Reuse the existing server-to-client packet rather than changing
+            // the core snapshot format. Late joiners receive the world tick
+            // during load, then periodic corrections here.
+            Call.clientPacketUnreliable(WeatherCycle.clockPacket, Double.toString(state.tick));
+        }
     }
 
     /** Does not check isSyncHidden. Call this if no entities are hidden. */
