@@ -183,7 +183,7 @@ public class Rules{
     public Seq<ItemStack> loadout = ItemStack.list(Items.copper, 100);
     /** Weather events that occur here. */
     public Seq<WeatherEntry> weather = new Seq<>(1);
-    /** Opt-in local weather and visual day/night cycle. Saved with world rules. */
+    /** Opt-in authoritative weather and visual day/night cycle. Saved with world rules. */
     public boolean weatherCycle = false;
     /** Optional cave access for local custom games; also requires the local experimental switch. */
     public boolean caves = false;

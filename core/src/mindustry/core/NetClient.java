@@ -74,6 +74,9 @@ public class NetClient implements ApplicationListener{
     private static final ClientBuildPlans plansOut = new ClientBuildPlans();
 
     public NetClient(){
+        addPacketHandler(WeatherCycle.clockPacket, WeatherCycle::receiveClock);
+        Events.on(WorldLoadEvent.class, e -> WeatherCycle.resetClock());
+        Events.on(ResetEvent.class, e -> WeatherCycle.resetClock());
 
         net.handleClient(Connect.class, packet -> {
             Log.info("Connecting to server: @", packet.addressTCP);

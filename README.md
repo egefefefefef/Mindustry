@@ -87,8 +87,7 @@ Post feature requests and feedback [here](https://github.com/Anuken/Mindustry-Su
 
 ### Experimental features
 
-**Caves** are an experimental feature in the current branch, not in the
-published v1.3 release. For a local single-player custom game, turn on
+**Caves** are an experimental feature. For a local single-player custom game, turn on
 **Settings → Experimental features → Caves** and enable **Generate a cave
 entrance** in the custom-game rules. The entrance appears on unoccupied dry
 ground near the player's core; click it to enter and click the cave exit to
@@ -132,13 +131,16 @@ Open **Settings → Experimental features** to enable the optional automatic
 weather cycle for both local custom games and campaign. The toggle affects the
 current local game as well as subsequently loaded worlds. Old custom saves may
 also enable it via **Customize → Environment**; this per-world rule remains
-supported when the global preference is off. Weather and day/night are not
-applied in multiplayer or the editor.
+supported when the global preference is off. For multiplayer, enable **Automatic
+weather and day/night** in the world rules before hosting (or in server rules).
+The server controls the cycle and sends clock corrections to clients; all players
+need this fork version. The cycle is not applied in the editor.
 
 In the same section, **Rain intensity** selects automatic, normal rain or
 downpour. This is a local preference, not a saved world rule: it changes the
 strength of cycle rain and local map rain marked **Always**, including current
-rain, but does not force rain or alter the phase schedule. **Rust unit physics** enables the experimental native unit
+rain, but does not force rain or alter the phase schedule. Multiplayer always
+uses automatic shared intensity instead of each player’s local preference. **Rust unit physics** enables the experimental native unit
 collision backend; when unavailable or unsuitable, Java is used instead. Its
 default depends on the build, and `-Dmindustry.experimentalNativePhysics` takes
 priority over the menu. Changing it applies to subsequent simulation steps.

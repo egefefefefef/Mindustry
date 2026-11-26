@@ -275,7 +275,7 @@ class WeatherCycleTests{
     }
 
     @Test
-    void disabledAndMultiplayerAndEditorDoNotSpawnWeather() throws Exception{
+    void disabledEditorAndNetworkClientsDoNotSpawnWeather() throws Exception{
         state.tick = WeatherCycle.phaseTicks;
         state.rules.weatherCycle = false;
         WeatherCycle.update();
@@ -287,12 +287,95 @@ class WeatherCycleTests{
         state.rules.editor = false;
         var active = net.getClass().getDeclaredField("active");
         active.setAccessible(true);
-        active.setBoolean(net, true);
+        active.setBoolean(net, true); // active client, not a server
         try{
+            assertTrue(WeatherCycle.enabled());
             WeatherCycle.update();
             assertEquals(0, Groups.weather.size());
         }finally{
             active.setBoolean(net, false);
+            WeatherCycle.resetClock();
+        }
+    }
+
+    @Test
+    void multiplayerServerDrivesWeatherAndIgnoresLocalRainPreference() throws Exception{
+        var previousNet = net;
+        int previousMode = Core.settings.getInt("weathercycle-rainmode", 0);
+        var packets = new java.util.ArrayList<Object>();
+        try{
+            var provider = (mindustry.net.Net.NetProvider)java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(), new Class[]{mindustry.net.Net.NetProvider.class}, (proxy, method, args) -> {
+                    if(method.getName().equals("sendAllServer")) packets.add(args[0]);
+                    return null;
+                });
+            net = new mindustry.net.Net(provider);
+            var active = net.getClass().getDeclaredField("active");
+            var server = net.getClass().getDeclaredField("server");
+            active.setAccessible(true); server.setAccessible(true);
+            active.setBoolean(net, true); server.setBoolean(net, true);
+            state.rules.weatherCycle = true;
+            state.tick = WeatherCycle.phaseTicks;
+            Core.settings.put("weathercycle-rainmode", 2);
+            assertEquals(0, WeatherCycle.rainMode());
+            WeatherCycle.update();
+            assertTrue(Weathers.rain.isActive());
+            assertEquals(WeatherCycle.rainIntensityAt(state.tick, 0), Weathers.rain.instance().intensity, 0.0001f);
+            assertFalse(packets.isEmpty(), "Server should broadcast weather creation");
+            WeatherCycle.update();
+            assertEquals(1, Groups.weather.size());
+            packets.clear();
+            netServer.writeStateSnapshot();
+            boolean foundClock = false;
+            for(Object packet : packets){
+                try{
+                    var type = packet.getClass().getDeclaredField("type");
+                    var contents = packet.getClass().getDeclaredField("contents");
+                    type.setAccessible(true); contents.setAccessible(true);
+                    if(WeatherCycle.clockPacket.equals(type.get(packet))){
+                        assertEquals(Double.toString(state.tick), contents.get(packet));
+                        foundClock = true;
+                    }
+                }catch(NoSuchFieldException ignored){}
+            }
+            assertTrue(foundClock, "State snapshots must send the server weather clock");
+        }finally{
+            net = previousNet;
+            Core.settings.put("weathercycle-rainmode", previousMode);
+            WeatherCycle.resetClock();
+        }
+    }
+
+    @Test
+    void multiplayerClockCorrectsClientsAndRejectsInvalidOrOldPackets() throws Exception{
+        var previousNet = net;
+        var previousClient = netClient;
+        net = new mindustry.net.Net(null);
+        netClient = new mindustry.core.NetClient();
+        var active = net.getClass().getDeclaredField("active");
+        active.setAccessible(true);
+        active.setBoolean(net, true); // client
+        try{
+            state.rules.weatherCycle = true;
+            state.tick = 50;
+            WeatherCycle.resetClock();
+            mindustry.core.NetClient.clientPacketReliable(WeatherCycle.clockPacket, "1000");
+            assertEquals(1000, WeatherCycle.clock(), 0.001);
+            state.tick = 55;
+            assertEquals(1005, WeatherCycle.clock(), 0.001);
+            WeatherCycle.receiveClock("900");
+            WeatherCycle.receiveClock("NaN");
+            WeatherCycle.receiveClock("garbage");
+            assertEquals(1005, WeatherCycle.clock(), 0.001);
+            WeatherCycle.receiveClock("1200");
+            assertEquals(1200, WeatherCycle.clock(), 0.001);
+            WeatherCycle.resetClock();
+            assertEquals(55, WeatherCycle.clock(), 0.001);
+        }finally{
+            active.setBoolean(net, false);
+            net = previousNet;
+            netClient = previousClient;
+            WeatherCycle.resetClock();
         }
     }
 
