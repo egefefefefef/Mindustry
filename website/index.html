@@ -16,7 +16,7 @@
   <div class="site-shell">
     <header class="header">
       <a class="brand" href="#top" aria-label="Mindustry — на главную"><span class="brand-icon">M<span>.</span></span><span>MINDUSTRY<small>FORK PROJECT</small></span></a>
-      <nav class="navigation" aria-label="Основная навигация"><a href="#about">О проекте</a><a href="#releases">Версии</a><a href="#news">Новости</a></nav>
+      <nav class="navigation" aria-label="Основная навигация"><a href="#about">О проекте</a><a href="#releases">Версии</a><a href="#news">Новости</a><a href="#feedback">Отзывы</a></nav>
       <a class="header-link" href="https://github.com/egefefefefef/Mindustry" target="_blank" rel="noopener noreferrer">GITHUB <span>↗</span></a>
     </header>
     <main id="top">
@@ -51,7 +51,22 @@
       </section>
 
       <section class="section news-section" id="news"><div class="section-heading"><div><div class="section-label"><span>03</span> / ЖУРНАЛ ОБНОВЛЕНИЙ</div><h2>ЧТО <em>НОВОГО?</em></h2></div><p class="section-description">Следи за обновлениями проекта. Оригинальные заметки к каждому релизу загружаются прямо с GitHub.</p></div><div id="news-list" class="news-list"><div class="loading">Загружаем новости…</div></div></section>
-      <section class="bottom-banner"><div><div class="section-label"><span>✳</span> / ПРОЕКТ С ОТКРЫТЫМ ИСХОДНЫМ КОДОМ</div><h2>СТРОИМ ДАЛЬШЕ<span>.</span></h2><p>Нашёл ошибку или появилась идея? Проект развивается вместе с сообществом.</p></div><a class="button primary" href="https://github.com/egefefefefef/Mindustry/issues" target="_blank" rel="noopener noreferrer">ПРЕДЛОЖИТЬ ИДЕЮ <span class="arrow">↗</span></a></section>
+      <section class="section feedback-section" id="feedback" aria-labelledby="feedback-heading">
+        <div class="section-heading"><div><div class="section-label"><span>04</span> / ОБРАТНАЯ СВЯЗЬ</div><h2 id="feedback-heading">ТВОЁ МНЕНИЕ <em>ВАЖНО.</em></h2></div><p class="section-description">Что понравилось, а что можно улучшить? Расскажи о своём опыте — это поможет развивать игру.</p></div>
+        <div class="feedback-layout">
+          <div class="feedback-form-card"><div class="feedback-kicker"><span class="live-dot"></span> ПОДЕЛИТЬСЯ ВПЕЧАТЛЕНИЯМИ</div><h3>ОСТАВИТЬ ОТЗЫВ</h3><p>Заполни форму, затем проверь и опубликуй отзыв на GitHub.</p>
+            <form id="feedback-form" action="https://github.com/egefefefefef/Mindustry/issues/new" method="get" target="_blank" rel="noopener noreferrer">
+              <input type="hidden" name="template" value="feedback.md"><input type="hidden" name="title" id="feedback-title"><input type="hidden" name="body" id="feedback-body">
+              <div class="feedback-fields"><label>ОЦЕНКА <select id="feedback-rating" required><option value="">Выбери оценку</option><option value="5">★★★★★ — Отлично</option><option value="4">★★★★☆ — Хорошо</option><option value="3">★★★☆☆ — Нормально</option><option value="2">★★☆☆☆ — Есть проблемы</option><option value="1">★☆☆☆☆ — Не понравилось</option></select></label><label>ВЕРСИЯ ИГРЫ <input id="feedback-version" maxlength="40" placeholder="Например, v1.4"></label></div>
+              <label class="feedback-message">ТВОЙ ОТЗЫВ <textarea id="feedback-text" required minlength="10" maxlength="2000" rows="5" placeholder="Расскажи, что тебе понравилось и что можно улучшить..."></textarea></label>
+              <p class="feedback-privacy">Отзыв будет <strong>публичным</strong>. Для публикации нужен аккаунт GitHub. Не указывай личные данные.</p>
+              <button class="button primary" type="submit">ПРОДОЛЖИТЬ НА GITHUB <span class="arrow">↗</span></button>
+            </form><noscript><p>Для формы нужен JavaScript. Можно <a href="https://github.com/egefefefefef/Mindustry/issues/new?template=feedback.md">открыть шаблон отзыва на GitHub</a>.</p></noscript>
+          </div>
+          <div class="feedback-reviews"><div class="feedback-reviews-head"><div><div class="feedback-kicker">ГОЛОС СООБЩЕСТВА</div><h3>ОТЗЫВЫ ИГРОКОВ</h3></div><span class="feedback-quote">“</span></div><div id="feedback-list" aria-live="polite"><div class="loading">Загружаем отзывы…</div></div><a class="github-releases" href="https://github.com/egefefefefef/Mindustry/issues?q=is%3Aissue%20%22%5B%D0%9E%D1%82%D0%B7%D1%8B%D0%B2%5D%22" target="_blank" rel="noopener noreferrer">ВСЕ ОТЗЫВЫ НА GITHUB <span>↗</span></a></div>
+        </div>
+      </section>
+      <section class="bottom-banner"><div><div class="section-label"><span>✳</span> / ПРОЕКТ С ОТКРЫТЫМ ИСХОДНЫМ КОДОМ</div><h2>СТРОИМ ДАЛЬШЕ<span>.</span></h2><p>Нашёл ошибку или появилась идея? Проект развивается вместе с сообществом.</p></div><a class="button primary" href="https://github.com/egefefefefef/Mindustry/issues/new/choose" target="_blank" rel="noopener noreferrer">СООБЩИТЬ НА GITHUB <span class="arrow">↗</span></a></section>
     </main>
     <footer><div><a class="brand footer-brand" href="#top"><span class="brand-icon">M<span>.</span></span><span>MINDUSTRY<small>FORK PROJECT</small></span></a><p>Неофициальный форк Mindustry от Anuken.<br>Распространяется по лицензии GPL v3.</p></div><div class="footer-links"><a href="https://github.com/egefefefefef/Mindustry">GITHUB ↗</a><a href="https://github.com/egefefefefef/Mindustry/releases">РЕЛИЗЫ ↗</a><a href="https://github.com/Anuken/Mindustry">ОРИГИНАЛ ↗</a></div><div class="footer-bottom"><span>СДЕЛАНО ДЛЯ ТЕХ, КТО ЛЮБИТ СТРОИТЬ.</span><a href="#top">НАВЕРХ ↑</a></div></footer>
   </div>
