@@ -1,0 +1,52 @@
+name: Deploy website
+
+on:
+  push:
+    branches: [master]
+    paths: ['website/**', '.github/workflows/website-pages.yml']
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/configure-pages@v5
+      - name: Update offline release snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate --slurp 'repos/${{ github.repository }}/releases?per_page=100' > /tmp/releases-pages.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          pages = json.loads(Path('/tmp/releases-pages.json').read_text())
+          releases = [release for page in pages for release in page if not release.get('draft')]
+          keys = ('tag_name', 'name', 'published_at', 'prerelease', 'draft', 'body', 'html_url')
+          result = []
+          for release in releases:
+              entry = {key: release.get(key) for key in keys}
+              entry['assets'] = [{key: asset.get(key) for key in ('name', 'browser_download_url', 'size')}
+                                 for asset in release.get('assets', [])]
+              result.append(entry)
+          Path('website/releases.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
+          PY
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: website
+      - id: deployment
+        uses: actions/deploy-pages@v4

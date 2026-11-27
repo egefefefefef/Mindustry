@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d1011">
+  <meta name="description" content="Неофициальный форк Mindustry. Скачивайте версии, читайте новости и следите за развитием игры.">
+  <title>Mindustry — строй. защищай. развивай.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="header">
+      <a class="brand" href="#top" aria-label="Mindustry — на главную"><span class="brand-icon">M<span>.</span></span><span>MINDUSTRY<small>FORK PROJECT</small></span></a>
+      <nav class="navigation" aria-label="Основная навигация"><a href="#about">О проекте</a><a href="#releases">Версии</a><a href="#news">Новости</a></nav>
+      <a class="header-link" href="https://github.com/egefefefefef/Mindustry" target="_blank" rel="noopener noreferrer">GITHUB <span>↗</span></a>
+    </header>
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-image" aria-hidden="true"></div><div class="hero-shade" aria-hidden="true"></div>
+        <div class="hero-content">
+          <div class="eyebrow"><span class="live-dot"></span> НЕОФИЦИАЛЬНЫЙ ФОРК MINDUSTRY <span class="eyebrow-line"></span></div>
+          <h1 id="hero-title">СТРОЙ.<br>ЗАЩИЩАЙ.<br><span>РАЗВИВАЙ.</span></h1>
+          <p>Твой мир. Твоя фабрика. Новые возможности.<br>Исследуй форк Mindustry и создавай свои истории.</p>
+          <div class="hero-actions"><a class="button primary" href="#releases"><span class="download-icon">↓</span> СКАЧАТЬ ИГРУ <span class="arrow">↗</span></a><a class="button ghost" href="#about">УЗНАТЬ БОЛЬШЕ <span class="arrow">↘</span></a></div>
+        </div>
+        <div class="hero-index"><span>01 / 03</span><div class="index-line"><i></i></div><span>THE FACTORY MUST GROW</span></div>
+        <div class="hero-coordinate">[ 62° 41' N / 14° 08' E ]</div>
+      </section>
+      <div class="status-bar"><div><span class="status-square"></span> СИСТЕМА АКТИВНА</div><div class="status-middle">НЕЗАВИСИМЫЙ ПРОЕКТ <span>//</span> СОЗДАНО ДЛЯ ИГРОКОВ</div><div>ОБНОВЛЕНО <span id="status-date">—</span></div></div>
+
+      <section class="section intro-section" id="about">
+        <div class="section-heading"><div><div class="section-label"><span>01</span> / О ПРОЕКТЕ</div><h2>ЗНАКОМАЯ ИГРА.<br><em>НОВЫЕ ГОРИЗОНТЫ.</em></h2></div><p class="section-description">Mindustry — это автоматизация, защита базы и бесконечные возможности для экспериментов. Этот форк добавляет собственные идеи к любимой игре.</p></div>
+        <div class="features">
+          <article class="feature"><span class="feature-number">01 / ИССЛЕДУЙ</span><div class="feature-icon">◈</div><h3>ПЕЩЕРЫ</h3><p>Спустись под землю, найди новые ресурсы и построй подземную фабрику.</p><span class="feature-tag">ЭКСПЕРИМЕНТАЛЬНО · ОДИНОЧНАЯ ИГРА</span></article>
+          <article class="feature"><span class="feature-number">02 / НАБЛЮДАЙ</span><div class="feature-icon weather-icon">☼</div><h3>ЖИВОЙ МИР</h3><p>Смена дня и ночи, дождь, снег и туман делают каждую игру особенной.</p><span class="feature-tag">ЭКСПЕРИМЕНТАЛЬНО</span></article>
+          <article class="feature"><span class="feature-number">03 / СОЗДАВАЙ</span><div class="feature-icon">⌘</div><h3>БОЛЬШЕ КОНТРОЛЯ</h3><p>Инструменты разработчика и настройки производительности для новых экспериментов.</p><span class="feature-tag">ДЛЯ ЛЮБОПЫТНЫХ</span></article>
+        </div>
+        <p class="notice"><span>!</span> Пещеры работают только в одиночной пользовательской игре. Перед экспериментами сохраняйте резервные копии миров.</p>
+      </section>
+
+      <section class="section release-section" id="releases">
+        <div class="section-heading"><div><div class="section-label"><span>02</span> / ЦЕНТР ЗАГРУЗОК</div><h2>ГОТОВ К <em>ЗАПУСКУ?</em></h2></div><p class="section-description">Все опубликованные сборки в одном месте. Выбери версию и платформу — и вперёд к строительству.</p></div>
+        <div class="downloads-layout"><div class="latest-card"><div class="latest-top"><span class="latest-label"><span class="live-dot"></span> АКТУАЛЬНАЯ ВЕРСИЯ</span><span class="cross">✳</span></div><div class="latest-version" id="latest-version">—</div><p id="latest-date">Загружаем информацию о релизе…</p><div class="latest-divider"></div><div class="latest-subtitle">ВЫБЕРИТЕ ПЛАТФОРМУ <span>↓</span></div><div id="latest-downloads" class="download-list"><div class="loading">Загрузка архивов…</div></div><p class="java-note"><span>✓</span> Java включена в десктопные сборки</p></div>
+          <div class="versions-panel"><div class="panel-heading"><div><span class="panel-label">АРХИВ РЕЛИЗОВ</span><h3>ВСЕ ВЕРСИИ <span id="release-count">—</span></h3></div><span class="panel-symbol">▦</span></div><label class="search"><span>⌕</span><input id="search" type="search" placeholder="Найти версию..." aria-label="Найти версию"><kbd>ПОИСК</kbd></label><div id="versions" class="versions" aria-live="polite"><div class="loading">Загружаем версии…</div></div><a class="github-releases" href="https://github.com/egefefefefef/Mindustry/releases" target="_blank" rel="noopener noreferrer">ВСЕ РЕЛИЗЫ НА GITHUB <span>↗</span></a></div></div>
+        <p class="release-footnote">Доступность платформ зависит от релиза. Приложения macOS не нотарифицированы; может потребоваться разрешить запуск в настройках безопасности.</p>
+      </section>
+
+      <section class="section news-section" id="news"><div class="section-heading"><div><div class="section-label"><span>03</span> / ЖУРНАЛ ОБНОВЛЕНИЙ</div><h2>ЧТО <em>НОВОГО?</em></h2></div><p class="section-description">Следи за обновлениями проекта. Оригинальные заметки к каждому релизу загружаются прямо с GitHub.</p></div><div id="news-list" class="news-list"><div class="loading">Загружаем новости…</div></div></section>
+      <section class="bottom-banner"><div><div class="section-label"><span>✳</span> / ПРОЕКТ С ОТКРЫТЫМ ИСХОДНЫМ КОДОМ</div><h2>СТРОИМ ДАЛЬШЕ<span>.</span></h2><p>Нашёл ошибку или появилась идея? Проект развивается вместе с сообществом.</p></div><a class="button primary" href="https://github.com/egefefefefef/Mindustry/issues" target="_blank" rel="noopener noreferrer">ПРЕДЛОЖИТЬ ИДЕЮ <span class="arrow">↗</span></a></section>
+    </main>
+    <footer><div><a class="brand footer-brand" href="#top"><span class="brand-icon">M<span>.</span></span><span>MINDUSTRY<small>FORK PROJECT</small></span></a><p>Неофициальный форк Mindustry от Anuken.<br>Распространяется по лицензии GPL v3.</p></div><div class="footer-links"><a href="https://github.com/egefefefefef/Mindustry">GITHUB ↗</a><a href="https://github.com/egefefefefef/Mindustry/releases">РЕЛИЗЫ ↗</a><a href="https://github.com/Anuken/Mindustry">ОРИГИНАЛ ↗</a></div><div class="footer-bottom"><span>СДЕЛАНО ДЛЯ ТЕХ, КТО ЛЮБИТ СТРОИТЬ.</span><a href="#top">НАВЕРХ ↑</a></div></footer>
+  </div>
+</body>
+</html>

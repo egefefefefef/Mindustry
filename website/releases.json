@@ -1,0 +1,158 @@
+[
+  {
+    "tag_name": "v1.4",
+    "name": "Mindustry v1.4",
+    "published_at": "2026-11-26T18:27:46Z",
+    "prerelease": false,
+    "draft": false,
+    "body": "# Mindustry v1.4\n\nUnofficial desktop distribution for Windows x64, Linux x64, and macOS (Intel and Apple Silicon), with Java included.\n\n- Experimental automatic weather and day/night can be enabled in world rules for multiplayer. The server controls the cycle; use the same fork version on all clients. Automated tests passed; real multiplayer gameplay and graphical launch have not been manually tested.\n- Experimental single-player caves, shared core resources, ruby ore, ruby drills and conveyors. Multiplayer caves are not implemented; paired cave saves cannot be hosted. Ruby appears in newly generated caves only.\n- Includes the experimental Rust physics, developer diagnostics and other features from v1.3.5. Full cave background simulation can stall the game; back up saves.\n\nExtract the Windows ZIP and run Start-Mindustry.bat, or the Linux ZIP and run Start-Mindustry.sh. The macOS ZIP contains separate Intel and Apple Silicon apps; they are not notarized and may need approval in System Settings. Android and iOS builds are not included.\n",
+    "html_url": "https://github.com/egefefefefef/Mindustry/releases/tag/v1.4",
+    "assets": [
+      {
+        "name": "Mindustry-v1.4-Linux-x64.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.4/Mindustry-v1.4-Linux-x64.zip",
+        "size": 153394131
+      },
+      {
+        "name": "Mindustry-v1.4-macOS.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.4/Mindustry-v1.4-macOS.zip",
+        "size": 301510007
+      },
+      {
+        "name": "Mindustry-v1.4-Windows-x64.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.4/Mindustry-v1.4-Windows-x64.zip",
+        "size": 151378553
+      }
+    ]
+  },
+  {
+    "tag_name": "v1.3.5",
+    "name": "Mindustry v1.3.5",
+    "published_at": "2026-11-15T18:57:59Z",
+    "prerelease": false,
+    "draft": false,
+    "body": "# Mindustry v1.3.5\n\nUnofficial desktop builds with Java included. Windows: extract and run `Start-Mindustry.bat`. Linux: extract and run `Start-Mindustry.sh`. macOS: choose the Apple Silicon or Intel app bundle; the apps are not notarized and may require approval in System Settings.\n\n- Experimental local custom-game caves, with shared core storage and an optional full Java background simulation.\n- New ruby ore, ruby drill and ruby conveyor. The ruby drill has been rebalanced; the conveyor is faster than titanium.\n- Ruby appears in newly generated caves only; existing saved caves are not regenerated.\n- Includes the experimental weather, Rust physics and performance diagnostics from earlier versions.\n\nEnable caves under Settings → Experimental features and in custom-game rules. Caves are experimental, single-player only and unavailable in campaign, multiplayer and the editor. Full background simulation may stall the game. Back up saves. Automated tests and packaging checks passed; the graphical launch was not tested in CI. This release includes Windows x64, Linux x64, and macOS (Apple Silicon and Intel).\n\n",
+    "html_url": "https://github.com/egefefefefef/Mindustry/releases/tag/v1.3.5",
+    "assets": [
+      {
+        "name": "Mindustry-v1.3.5-Linux-x64.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.3.5/Mindustry-v1.3.5-Linux-x64.zip",
+        "size": 153396927
+      },
+      {
+        "name": "Mindustry-v1.3.5-macOS.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.3.5/Mindustry-v1.3.5-macOS.zip",
+        "size": 301463873
+      },
+      {
+        "name": "Mindustry-v1.3.5-Windows-x64.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.3.5/Mindustry-v1.3.5-Windows-x64.zip",
+        "size": 151372985
+      }
+    ]
+  },
+  {
+    "tag_name": "v1.3",
+    "name": "Mindustry v1.3",
+    "published_at": "2026-11-13T19:44:17Z",
+    "prerelease": false,
+    "draft": false,
+    "body": "# Mindustry v1.3\n\nAn unofficial fork distribution with experimental local weather, a consolidated experimental-features menu, and experimental Rust unit physics enabled by default.\n\n## What's new\n- Settings > Experimental features brings together the local automatic weather cycle, rain intensity, and the Rust unit-physics toggle.\n- Local custom games and campaign can use an optional day/night cycle and changing rain, snow and fog, including rain with fog. Snow accumulates, melts and slows grounded units; puddles and temporary footprints are visual.\n- Local maps with weather set to Always now retain that weather while the cycle runs. Always-on rain starts immediately and the rain intensity selector can select normal rain or downpour.\n- Scheduled map weather is paused during the cycle, but Always entries remain active. Local weather graphics can be disabled separately. Existing weather can take time to fade after settings change.\n- Includes the developer test panel and physics diagnostics introduced in v1.2. No graphics-engine rewrite is included.\n\n## Platforms\n- Windows x64: extract the ZIP and run Start-Mindustry.bat; Java is included.\n- Linux x64: extract the ZIP and run Start-Mindustry.sh; Java is included.\n- macOS: Intel and Apple Silicon app bundles are provided separately inside the ZIP.\n- Android: not included; the APK build has not passed verification.\n- iOS: not included; Apple signing and provisioning are required.\n\n## Build information and limitations\nBuilt from source commit a4484b292da0c856d79d90c66c61912d9841f944 with JDK 17, Gradle and Rust. Java and Rust tests, physics parity checks and packaged native-library smoke tests ran in GitHub Actions. Rust physics is experimental and falls back to Java for unsupported cases or unavailable native libraries; mixed-platform multiplayer determinism has not been established. It can be disabled in the experimental settings or with -Dmindustry.experimentalNativePhysics=false. Weather cycling is local single-player only; back up important saves before experimenting. Desktop graphical launch and visual appearance were not tested in CI. The macOS builds are not notarized and may require explicit approval in System Settings. This fork is not an official upstream release.\n",
+    "html_url": "https://github.com/egefefefefef/Mindustry/releases/tag/v1.3",
+    "assets": [
+      {
+        "name": "Mindustry-v1.3-Linux-x64.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.3/Mindustry-v1.3-Linux-x64.zip",
+        "size": 151554592
+      },
+      {
+        "name": "Mindustry-v1.3-macOS.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.3/Mindustry-v1.3-macOS.zip",
+        "size": 297768241
+      },
+      {
+        "name": "Mindustry-v1.3-Windows-x64.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.3/Mindustry-v1.3-Windows-x64.zip",
+        "size": 149525322
+      }
+    ]
+  },
+  {
+    "tag_name": "v1.2",
+    "name": "Mindustry v1.2",
+    "published_at": "2026-11-12T14:45:19Z",
+    "prerelease": false,
+    "draft": false,
+    "body": "# Mindustry v1.2\n\nAn unofficial fork distribution with experimental Rust unit physics enabled by default, Rust flowfield pathfinding, and Java fallbacks.\n\n## What's new\n- Developer test panel under Settings > Developer Options: spawn units near the player, choose unit type and team, start a wave, enable metrics, and remove units created by the panel.\n- Optional unit-cap toggle, with confirmation. Panel actions are restricted to local single-player games and can affect saved world state; back up important saves before testing.\n- Performance overlay reports the last completed physics layers and cumulative Rust, Java-disabled and Java-fallback layer steps. Empty layers are not counted.\n- Includes the v1.1 power graph cleanup and experimental Rust physics; no OpenGL renderer rewrite is included.\n\n## Platforms\n- Windows x64: extract the ZIP and run Start-Mindustry.bat; Java is included.\n- Linux x64: extract the ZIP and run Start-Mindustry.sh; Java is included.\n- macOS: Intel and Apple Silicon app bundles are provided separately inside the ZIP.\n- Android: not included; the APK build has not passed verification.\n- iOS: not included; Apple signing and provisioning are required.\n\n## Build information and limitations\nBuilt from source commit f53647bb3669146ab68628c19df8dd2057cc1240 with JDK 17, Gradle and the Rust toolchain. Java and Rust tests, physics parity checks and packaged native-library smoke tests ran in GitHub Actions. Rust physics is experimental; it falls back to Java for unsupported cases or unavailable native libraries, and mixed-platform multiplayer determinism has not been established. To disable it, add the JVM option -Dmindustry.experimentalNativePhysics=false. Desktop graphical launch was not tested in CI. The macOS builds are not notarized and may require explicit approval in System Settings. This fork is not an official upstream release.\n",
+    "html_url": "https://github.com/egefefefefef/Mindustry/releases/tag/v1.2",
+    "assets": [
+      {
+        "name": "Mindustry-v1.2-Linux-x64.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.2/Mindustry-v1.2-Linux-x64.zip",
+        "size": 151544906
+      },
+      {
+        "name": "Mindustry-v1.2-macOS.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.2/Mindustry-v1.2-macOS.zip",
+        "size": 297734249
+      },
+      {
+        "name": "Mindustry-v1.2-Windows-x64.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.2/Mindustry-v1.2-Windows-x64.zip",
+        "size": 149507690
+      }
+    ]
+  },
+  {
+    "tag_name": "v1.1",
+    "name": "Mindustry v1.1",
+    "published_at": "2026-11-12T07:00:06Z",
+    "prerelease": false,
+    "draft": false,
+    "body": "# Mindustry v1.1\n\nA distribution of Mindustry with experimental Rust physics enabled by default, Rust flowfield pathfinding, and Java fallbacks. It also includes power graph cleanup when buildings are picked up.\n\n## Platforms\n- Windows x64: extract the ZIP and run Start-Mindustry.bat; Java is included.\n- Linux x64: extract the ZIP and run Start-Mindustry.sh; Java is included.\n- macOS: Intel and Apple Silicon app bundles are provided separately inside the ZIP.\n- Android: not included; the APK build has not passed verification.\n- iOS: not included; Apple signing and provisioning are required.\n\n## Build information and limitations\nBuilt from source commit c056da6d3111d45c8ebd76a976667af3faa4efff with JDK 17, Gradle and the Rust toolchain. Java and Rust tests, physics parity checks and packaged native-library smoke tests ran in GitHub Actions. Rust physics is experimental; it falls back to Java for unsupported cases or unavailable native libraries, and mixed-platform multiplayer determinism has not been established. To disable it, add the JVM option -Dmindustry.experimentalNativePhysics=false. Desktop graphical launch was not tested in CI. The macOS builds are not notarized and may require explicit approval in System Settings. This fork is not an official upstream release.\n",
+    "html_url": "https://github.com/egefefefefef/Mindustry/releases/tag/v1.1",
+    "assets": [
+      {
+        "name": "Mindustry-v1.1-Linux-x64.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.1/Mindustry-v1.1-Linux-x64.zip",
+        "size": 151525156
+      },
+      {
+        "name": "Mindustry-v1.1-macOS.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.1/Mindustry-v1.1-macOS.zip",
+        "size": 297856486
+      },
+      {
+        "name": "Mindustry-v1.1-Windows-x64.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.1/Mindustry-v1.1-Windows-x64.zip",
+        "size": 149482508
+      }
+    ]
+  },
+  {
+    "tag_name": "v1.0",
+    "name": "Mindustry v1.0",
+    "published_at": "2026-11-11T19:50:21Z",
+    "prerelease": false,
+    "draft": false,
+    "body": "# Mindustry v1.0\n\nA distribution of Mindustry with the Rust flowfield pathfinding backend, Java fallback, and power graph cleanup when buildings are picked up.\n\n## Platforms\n- Windows x64: extract the ZIP and run Start-Mindustry.bat; Java is included.\n- Linux x64: extract the ZIP and run Start-Mindustry.sh; Java is included.\n- macOS: Intel and Apple Silicon app bundles are provided separately inside the ZIP.\n- Android: not included; the APK build has not passed verification.\n- iOS: not included; Apple signing and provisioning are required.\n\n## Build information and limitations\nBuilt from source commit 0cd569af14b0f4ffe23b57b05b71e0b2d9c60db3 with JDK 17, Gradle and the Rust toolchain. Java and Rust tests and package integrity checks ran in GitHub Actions. Desktop graphical launch was not tested in CI. The macOS builds are not notarized and may require explicit approval in System Settings. This fork is not an official upstream release.\n",
+    "html_url": "https://github.com/egefefefefef/Mindustry/releases/tag/v1.0",
+    "assets": [
+      {
+        "name": "Mindustry-v1.0-Linux-x64.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.0/Mindustry-v1.0-Linux-x64.zip",
+        "size": 151512184
+      },
+      {
+        "name": "Mindustry-v1.0-macOS.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.0/Mindustry-v1.0-macOS.zip",
+        "size": 273092694
+      },
+      {
+        "name": "Mindustry-v1.0-Windows-x64.zip",
+        "browser_download_url": "https://github.com/egefefefefef/Mindustry/releases/download/v1.0/Mindustry-v1.0-Windows-x64.zip",
+        "size": 149486759
+      }
+    ]
+  }
+]
