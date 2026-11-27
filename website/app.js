@@ -171,3 +171,54 @@ async function init(){
   $('search').addEventListener('input', event => renderVersions(releases, event.target.value));
 }
 init();
+
+const FEEDBACK_ISSUES = 'https://api.github.com/repos/egefefefefef/Mindustry/issues?state=all&per_page=100';
+const FEEDBACK_GITHUB = 'https://github.com/egefefefefef/Mindustry/issues';
+function initFeedback(){
+  const form = $('feedback-form');
+  $('feedback-text').addEventListener('input', () => $('feedback-text').setCustomValidity(''));
+  form.addEventListener('submit', event => {
+    const rating = $('feedback-rating').value;
+    const version = $('feedback-version').value.trim().replace(/[\r\n]+/g, ' ') || 'Не указана';
+    const review = $('feedback-text').value.trim();
+    if(review.length < 10){
+      event.preventDefault();
+      $('feedback-text').setCustomValidity('Напишите не менее 10 символов, не считая пробелы по краям.');
+      $('feedback-text').reportValidity();
+      return;
+    }
+    $('feedback-title').value = `[Отзыв] ${rating}/5`;
+    $('feedback-body').value = `Оценка: ${rating} / 5\nВерсия игры: ${version}\n\n### Отзыв\n\n${review}`;
+  });
+  loadFeedback();
+}
+async function loadFeedback(){
+  const box = $('feedback-list');
+  try{
+    const response = await fetch(FEEDBACK_ISSUES, {headers:{Accept:'application/vnd.github+json'}});
+    if(!response.ok) throw new Error(`GitHub API: ${response.status}`);
+    const issues = await response.json();
+    if(!Array.isArray(issues)) throw new Error('Unexpected issues response');
+    const reviews = issues.filter(issue => !issue.pull_request && /^\[Отзыв\]/i.test(issue.title || '')).slice(0, 5);
+    box.replaceChildren();
+    if(!reviews.length){ box.append(element('div', 'feedback-status', 'Отзывов пока нет. Будь первым, кто поделится впечатлениями!')); return; }
+    for(const review of reviews){
+      const article = element('article', 'feedback-review');
+      const head = element('div', 'feedback-review-head');
+      head.append(element('strong', '', review.user?.login || 'Игрок'), element('span', '', date(review.created_at)));
+      const stars = (review.title || '').match(/\b([1-5])\s*\/\s*5\b/);
+      article.append(head);
+      if(stars) article.append(element('div', 'feedback-stars', '★'.repeat(Number(stars[1])) + '☆'.repeat(5 - Number(stars[1]))));
+      const text = (review.body || '').split(/### Отзыв\s*/i).pop().trim();
+      const snippet = text.length > 300 ? text.slice(0, 300) + '…' : text;
+      article.append(element('p', '', snippet || 'Открыть отзыв на GitHub.'), externalLink(review.html_url, '', 'ЧИТАТЬ НА GITHUB ↗'));
+      box.append(article);
+    }
+  }catch(error){
+    console.warn('Feedback is unavailable.', error);
+    const status = element('div', 'feedback-status', 'Не удалось загрузить отзывы. Возможно, раздел GitHub Issues ещё не включён или GitHub временно недоступен. ');
+    status.append(externalLink(FEEDBACK_GITHUB, '', 'Открыть GitHub ↗'));
+    box.replaceChildren(status);
+  }
+}
+initFeedback();
